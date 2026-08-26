@@ -14,7 +14,7 @@
   <div class="topnav__links">
     <a href="index.html" class="active">Home</a>
     <a href="guide.html">AiStandardSurface → PxrSurface</a>
-    <a href="#" class="disabled">Lama vs PxrSurface (soon)</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
   </div>
 </nav>
 
@@ -42,31 +42,43 @@
       <p><a href="guide.html">Read the guide →</a></p>
     </div>
 
-    <div class="card card--soon">
-      <span class="badge">Coming soon</span>
-      <h3>Lama vs PxrSurface</h3>
+    <div class="card">
+      <span class="badge">Available now</span>
+      <h3>PxrSurface vs Lama</h3>
       <p class="muted">
-        A second comparison guide, covering Arnold's layered material
-        (Lama) system side-by-side with PxrSurface. Not published yet —
-        check back soon.
+        RenderMan gives you two ways to build a material: PxrSurface, one node
+        with every layer already in it, and MaterialX Lama, a set of
+        single-purpose nodes you wire together. What each one is good at, how
+        the pieces map onto each other, and how to tell which a job needs.
       </p>
+      <p><a href="lama.html">Read the guide →</a></p>
     </div>
   </div>
 
   <h2>How to use these guides</h2>
   <p>
-    Each guide starts with a quick-reference table so you can look up a single
-    parameter fast, then goes deeper into each group of controls with a
-    plain-language explanation, a real-world analogy, and a callout for
-    anything that behaves differently than you'd expect coming from the other
-    shader. You don't need to read them front to back — jump to the section
-    you need.
+    Each guide opens with the mental model — the one or two ideas that make
+    everything else make sense — followed by a quick-reference table for
+    looking up a single control fast. After that it goes group by group
+    through the controls, with a plain-language explanation, a real-world
+    analogy, and a callout wherever something behaves differently than you'd
+    expect. You don't need to read them front to back; jump to the section you
+    need.
+  </p>
+  <p>
+    Parameter names, defaults and conversion factors are checked against the
+    actual shader definitions rather than written from memory, so the numbers
+    are safe to act on — though it's always worth a sanity check against the
+    versions installed in your own pipeline.
   </p>
 </main>
 
 <footer>
-  Written for lookdev and lighting artists switching render engines. No prior
-  shader-writing knowledge assumed.
+  <p>
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p class="muted">Last updated: 26 August 2026.</p>
 </footer>
 
 </body>

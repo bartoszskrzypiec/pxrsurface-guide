@@ -14,7 +14,7 @@
   <div class="topnav__links">
     <a href="index.html">Home</a>
     <a href="guide.html" class="active">AiStandardSurface → PxrSurface</a>
-    <a href="#" class="disabled">Lama vs PxrSurface (soon)</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
   </div>
 </nav>
 
@@ -37,11 +37,16 @@
       <li><a href="#quick-reference">Quick reference table</a></li>
       <li><a href="#diffuse">Diffuse / Base</a></li>
       <li><a href="#specular">Specular &amp; "metalness"</a></li>
+      <li><a href="#energy">Who balances the layers</a></li>
       <li><a href="#clearcoat">Clearcoat</a></li>
       <li><a href="#fuzz">Sheen → Fuzz</a></li>
       <li><a href="#subsurface">Subsurface scattering</a></li>
       <li><a href="#glow">Emission → Glow</a></li>
       <li><a href="#transmission">Transmission / Glass</a></li>
+      <li><a href="#bump">Bump, normal &amp; displacement</a></li>
+      <li><a href="#presence">Presence &amp; opacity</a></li>
+      <li><a href="#iridescence">Iridescence &amp; thin film</a></li>
+      <li><a href="#first-15">Your first 15 minutes</a></li>
       <li><a href="#pitfalls">Common pitfalls</a></li>
     </ol>
   </aside>
@@ -64,6 +69,7 @@
           <div class="stack__title stack__title--arnold">AiStandardSurface</div>
           <div class="stack__layers">
             <div class="stack__layer">Coat</div>
+            <div class="stack__layer">Thin Film</div>
             <div class="stack__layer">Sheen</div>
             <div class="stack__layer">Specular (+ Metalness)</div>
             <div class="stack__layer">Transmission</div>
@@ -76,8 +82,9 @@
           <div class="stack__title stack__title--pxr">PxrSurface</div>
           <div class="stack__layers">
             <div class="stack__layer">Clearcoat</div>
+            <div class="stack__layer">Iridescence</div>
             <div class="stack__layer">Fuzz</div>
-            <div class="stack__layer">Specular (Fresnel-driven)</div>
+            <div class="stack__layer">Specular + Rough Specular</div>
             <div class="stack__layer">Glass</div>
             <div class="stack__layer">Subsurface</div>
             <div class="stack__layer">Diffuse</div>
@@ -87,16 +94,27 @@
       </div>
 
       <p class="muted">
-        Same seven jobs, different names for most of them. The one layer that
-        genuinely works differently — not just a rename — is Specular, because
-        that's where "metalness" lives in Arnold and doesn't exist as a single
-        slider in PxrSurface. More on that below.
+        Broadly the same jobs, different names for most of them. The one layer
+        that genuinely works differently — not just a rename — is Specular,
+        because that's where "metalness" lives in Arnold and doesn't exist as a
+        single slider in PxrSurface. More on that below.
+      </p>
+      <p class="muted">
+        PxrSurface also has one lobe with no Arnold counterpart at all:
+        <strong>Rough Specular</strong>, a complete second specular layer with
+        its own colors, roughness and bump. Nothing in AiStandardSurface maps
+        onto it, so it stays switched off unless you deliberately reach for it.
       </p>
     </section>
 
     <section id="quick-reference">
       <h2>Quick reference table</h2>
-      <p>Look up a single control here, then jump to its section below for the full explanation.</p>
+      <p>
+        Look up a single control here, then jump to its section below for the
+        full explanation. Where a name in brackets appears, that's the internal
+        parameter name — useful when you're searching a node editor rather than
+        reading a UI label.
+      </p>
 
       <div class="table-scroll">
         <table>
@@ -135,8 +153,8 @@
             </tr>
             <tr>
               <td class="col-arnold">Specular IOR</td>
-              <td class="col-pxr">Specular IOR (Physical Fresnel mode)</td>
-              <td>Only used if you switch Fresnel Mode to Physical — see below.</td>
+              <td class="col-pxr">Refraction Index <code>specularIor</code></td>
+              <td>Only used if you switch Fresnel Mode to Physical — see below. Note it's a <em>color</em> in PxrSurface, not a single float.</td>
             </tr>
             <tr>
               <td class="col-arnold">Metalness</td>
@@ -144,29 +162,104 @@
               <td>Achieved via Specular Edge/Face Color instead. Biggest conceptual jump — see below.</td>
             </tr>
             <tr>
+              <td class="col-arnold">Specular Anisotropy</td>
+              <td class="col-pxr">Anisotropy <code>specularAnisotropy</code></td>
+              <td>Same meaning, wider range: Arnold is 0→1, PxrSurface is −1→1. Circular at 0 in both.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Specular Rotation</td>
+              <td class="col-pxr">Shading Tangent <code>specularAnisotropyDirection</code></td>
+              <td>No slider equivalent. PxrSurface only accepts a <em>connection</em> here, not a typed value.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold"><em>Always GGX</em></td>
+              <td class="col-pxr">Specular Model <code>specularModelType</code></td>
+              <td>PxrSurface lets you pick Beckmann or GGX, and defaults to Beckmann. Switch it to GGX to match Arnold.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold"><em>No equivalent</em></td>
+              <td class="col-pxr">Rough Specular</td>
+              <td>A whole second specular lobe PxrSurface has and Arnold doesn't. Leave it off when converting.</td>
+            </tr>
+            <tr>
               <td class="col-arnold">Coat</td>
               <td class="col-pxr">Clearcoat</td>
               <td>Same purpose, own Face/Edge Color and roughness.</td>
             </tr>
             <tr>
-              <td class="col-arnold">Sheen</td>
-              <td class="col-pxr">Fuzz</td>
-              <td>Same purpose (cloth/dust/velvet edge glow), different name and roughness curve.</td>
+              <td class="col-arnold">Sheen / Sheen Color</td>
+              <td class="col-pxr">Fuzz Gain / Fuzz Color</td>
+              <td>Same purpose: cloth, dust, velvet edge glow.</td>
             </tr>
             <tr>
-              <td class="col-arnold">Subsurface</td>
-              <td class="col-pxr">Subsurface</td>
-              <td>Both exist, but are dialled in with different parameters — see below.</td>
+              <td class="col-arnold">Sheen Roughness</td>
+              <td class="col-pxr">Fuzz Cone Angle</td>
+              <td>Not a roughness at all — an angle in degrees. Pixar's own converter uses Cone Angle = 32 × Sheen Roughness.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Subsurface / Subsurface Color</td>
+              <td class="col-pxr">Subsurface Gain / Color</td>
+              <td>Direct swap.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Subsurface Radius</td>
+              <td class="col-pxr">Mean Free Path Color <code>subsurfaceDmfpColor</code></td>
+              <td>Radius becomes a <em>color</em>, not a distance. Catches people out.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Subsurface Scale</td>
+              <td class="col-pxr">Mean Free Path Distance <code>subsurfaceDmfp</code></td>
+              <td>Scale becomes the distance. Defaults differ sharply: 1 vs 10.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Subsurface Type</td>
+              <td class="col-pxr">Subsurface Model <code>subsurfaceType</code></td>
+              <td>Six models in PxrSurface vs two in Arnold — see below.</td>
             </tr>
             <tr>
               <td class="col-arnold">Emission / Emission Color</td>
-              <td class="col-pxr">Glow / Glow Color</td>
+              <td class="col-pxr">Glow Gain / Glow Color</td>
               <td>Direct swap, just renamed.</td>
             </tr>
             <tr>
               <td class="col-arnold">Transmission</td>
-              <td class="col-pxr">Glass (specular transmission)</td>
-              <td>Both support glass; rarely touched by most artists, kept brief here.</td>
+              <td class="col-pxr">Reflection Gain <em>and</em> Refraction Gain</td>
+              <td>One Arnold slider becomes two PxrSurface gains. Set both.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Transmission Color</td>
+              <td class="col-pxr">Refraction Color</td>
+              <td>Direct swap — as long as Transmission Depth is 0.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Transmission Depth</td>
+              <td class="col-pxr">Interior → Extinction</td>
+              <td>Depth is converted into an extinction coefficient by Beer's law, not copied across.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Thin Walled</td>
+              <td class="col-pxr">Glass → Thin <code>thinGlass</code></td>
+              <td>Direct swap.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Opacity <em>(RGB)</em></td>
+              <td class="col-pxr">Presence <em>(float)</em></td>
+              <td>Colored opacity has nowhere to go — PxrSurface takes one number, and it wants 0 or 1.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Normal / Bump</td>
+              <td class="col-pxr">Bump <code>bumpNormal</code></td>
+              <td>Plus a separate Bump input on every single lobe — see below.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Coat Normal</td>
+              <td class="col-pxr">Clearcoat → Bump <code>clearcoatBumpNormal</code></td>
+              <td>Direct swap, and one of seven per-lobe bump inputs.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Thin Film Thickness / IOR</td>
+              <td class="col-pxr">Iridescence (Physical mode)</td>
+              <td>Both in nanometres. PxrSurface also offers an Artistic two-color mode Arnold doesn't have.</td>
             </tr>
           </tbody>
         </table>
@@ -314,7 +407,139 @@
       </ul>
       <p class="muted">
         For most lookdev work, Artistic mode is the easier starting point if
-        you're used to picking colors by eye in Arnold.
+        you're used to picking colors by eye in Arnold — and it's what
+        PxrSurface already defaults to. Worth knowing, though: Pixar's own
+        automatic converter goes the other way and outputs Physical mode,
+        because it can compute exact IOR and extinction numbers from Arnold's
+        values. You can't do that by eye, which is why Artistic remains the
+        better manual choice.
+      </p>
+
+      <h3>Beckmann vs. GGX</h3>
+      <p>
+        This one is easy to miss and changes the look of every highlight in
+        your material. Arnold always uses a GGX highlight. PxrSurface lets you
+        choose, under <strong>Specular Model</strong> — and it defaults to
+        <strong>Beckmann</strong>, not GGX.
+      </p>
+      <p>
+        The difference isn't the size of the highlight, it's the falloff at its
+        edges. Beckmann is sharper and stops more abruptly; GGX keeps a faint
+        "tail" of light glowing away from the centre. On a car body or a
+        polished floor that tail is a large part of what the material reads as.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Set <strong>Specular Model</strong> to <strong>GGX</strong> before
+          you judge a converted material. This is the same switch Pixar's own
+          conversion shader makes automatically. Do the same on
+          <strong>Clearcoat</strong>, which has its own separate Specular Model
+          setting and also defaults to Beckmann.
+        </p>
+      </div>
+
+      <h3>Anisotropy</h3>
+      <p>
+        Anisotropy stretches the highlight in one direction instead of leaving
+        it circular — the control you reach for on brushed metal.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          The bottom of a brushed steel pan, or the back of a MacBook. The
+          light doesn't sit as a round dot; it smears into a line running along
+          the direction the metal was brushed, because the microscopic grooves
+          all point the same way.
+        </p>
+      </div>
+      <p>
+        The value maps across directly — both shaders treat 0 as "circular, no
+        anisotropy" — but the ranges differ. Arnold's
+        <strong>Specular Anisotropy</strong> runs 0 to 1. PxrSurface's
+        <strong>Anisotropy</strong> runs −1 to 1, where the negative half gives
+        you the same range of ellipses rotated ninety degrees. So every Arnold
+        value has a home in PxrSurface, but not the other way round.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          <strong>Specular Rotation</strong> has no equivalent and does not
+          survive conversion — Pixar's own converter reads the parameter and
+          then discards it. PxrSurface controls the direction of the stretch
+          through <strong>Shading Tangent</strong>
+          (<code>specularAnisotropyDirection</code>) instead, and that input
+          only works when something is <em>connected</em> to it. Typing a value
+          into it does nothing. If your brushed metal relied on a rotation
+          value, you'll be rebuilding that with a texture or a tangent pattern.
+        </p>
+      </div>
+
+      <h3>Rough Specular: a lobe Arnold doesn't have</h3>
+      <p>
+        PxrSurface carries a second, entirely independent specular layer called
+        <strong>Rough Specular</strong>, with its own Face and Edge Color,
+        roughness, Fresnel mode, anisotropy and bump. It exists so you can put
+        a broad, soft sheen underneath a tight highlight — worn plastic,
+        polished-then-scuffed metal, skin with both an oily and a dry
+        reflection.
+      </p>
+      <p class="muted">
+        Nothing in AiStandardSurface maps onto it. When you're converting a
+        material, leave its gains at zero; it's a tool for going beyond what
+        the Arnold material could do, not part of the translation.
+      </p>
+    </section>
+
+    <section id="energy">
+      <p class="section-kicker">Cross-cutting</p>
+      <h2>Who balances the layers</h2>
+      <p>
+        This is the single idea that explains most "my converted material looks
+        wrong" moments, and it isn't a parameter at all — it's a difference in
+        who does the bookkeeping.
+      </p>
+      <p>
+        A surface can only reflect the light that lands on it. If the specular
+        layer takes 90% of it, the diffuse layer underneath can only have
+        what's left. <strong>AiStandardSurface manages that budget for you.</strong>
+        Push Metalness up and Arnold quietly fades the diffuse layer out. Turn
+        on Transmission and it takes the diffuse layer down again. Add Coat and
+        it darkens what sits beneath. You never see those adjustments; they
+        happen inside the shader.
+      </p>
+      <p>
+        <strong>PxrSurface hands you the budget and trusts you with it.</strong>
+        Its lobes are much more independent — turning the specular up does not
+        turn the diffuse down. Nothing warns you when the layers together are
+        reflecting more light than arrived.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Arnold is a restaurant bill that splits itself. PxrSurface is a pile
+          of cash on the table: the same total is available, but if one person
+          takes more, it's on you to notice that someone else has to take less.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          This isn't folklore — it's visible in Pixar's own conversion shader,
+          which has to hand-multiply <strong>Diffuse Gain</strong> by
+          <code>(1 − metalness)</code> and then again by
+          <code>(1 − subsurface)</code>, and knock <strong>Subsurface Gain</strong>
+          down by <code>(1 − sheen)</code>, purely because PxrSurface won't do
+          any of it on its own. So the "turn Diffuse Gain down for metals" advice
+          in the Specular section isn't a metal trick — it's one instance of a
+          rule that applies every time you raise a lobe.
+        </p>
+      </div>
+      <p>
+        In practice: <strong>every time you raise a gain, ask what should come
+        down.</strong> Raising Subsurface Gain to 1 without lowering Diffuse
+        Gain gives you a material lit twice. Raising Fuzz on a subsurface
+        material does the same thing again.
       </p>
     </section>
 
@@ -371,12 +596,29 @@
         </p>
       </div>
       <p>
-        Fuzz gives you a Weight, Color, and Roughness, the same conceptual
-        controls as Sheen. The main difference is under the hood: Fuzz reuses
-        a hair-shading model, so its roughness response curve doesn't line up
-        1-to-1 with Sheen's — treat any ported value as a starting point to
-        re-eyeball, not a guaranteed match.
+        <strong>Sheen</strong> → <strong>Fuzz Gain</strong> and
+        <strong>Sheen Color</strong> → <strong>Fuzz Color</strong> are direct
+        swaps. The third control is where it stops being a rename:
+        AiStandardSurface gives you <strong>Sheen Roughness</strong>, and
+        PxrSurface gives you <strong>Fuzz Cone Angle</strong> — not a roughness
+        at all, but an angle in degrees, defaulting to 8.
       </p>
+      <p>
+        The angle describes how far off the surface the imaginary fibers lean.
+        A narrow cone means fibers standing almost straight up and a tight rim
+        of light; a wide cone means fibers lying over at all sorts of angles
+        and a broad, hazy glow. It's the same intent as roughness, expressed as
+        geometry rather than as a 0–1 slider.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          There is an exact conversion, and it's the one Pixar uses:
+          <strong>Fuzz Cone Angle = 32 × Sheen Roughness</strong>. An Arnold
+          Sheen Roughness of 0.3 becomes a Cone Angle of about 9.6°. Start
+          there rather than at the default 8, then adjust by eye.
+        </p>
+      </div>
     </section>
 
     <section id="subsurface">
@@ -396,16 +638,71 @@
           comes back out reddened and softened. That's subsurface scattering.
         </p>
       </div>
+      <h3>Radius and Scale become Mean Free Path</h3>
+      <p>
+        The parameters do map across, but the names disguise it badly. Arnold's
+        pair is <strong>Subsurface Radius</strong> (a color — how far red,
+        green and blue each travel) and <strong>Subsurface Scale</strong> (a
+        single number multiplying all three). PxrSurface splits the same idea
+        into <strong>Mean Free Path Color</strong> and
+        <strong>Mean Free Path Distance</strong>.
+      </p>
+      <p>
+        So the translation is: <strong>Radius</strong> →
+        <strong>Mean Free Path Color</strong>, and <strong>Scale</strong> →
+        <strong>Mean Free Path Distance</strong>. The thing that trips people
+        up is that Radius sounds like a distance and lands on a color, while
+        Scale sounds like a multiplier and lands on the distance. Get those the
+        wrong way round and nothing will look right no matter how long you
+        tweak.
+      </p>
       <div class="callout">
         <div class="callout__title">↔ Coming from Arnold</div>
         <p>
-          This is the layer least likely to port over with the same numbers.
-          Arnold's Subsurface uses a Scale + Radius pair that's fairly
-          forgiving to eyeball. PxrSurface's Subsurface parameters are tied
-          more directly to physical scattering distances, so a "Radius" value
-          that looked right in Arnold won't automatically look right here —
-          plan to re-tune this layer by eye against a reference (skin, wax,
-          etc.) rather than porting numbers directly.
+          Watch the defaults. Arnold's Scale sits at <strong>1</strong>;
+          PxrSurface's Mean Free Path Distance sits at <strong>10</strong>. If
+          you copy your Radius across and leave the distance alone, light is
+          travelling ten times further inside the object than it did in Arnold,
+          and your skin turns to wax.
+        </p>
+      </div>
+
+      <h3>Choosing a subsurface model</h3>
+      <p>
+        Arnold offers two ways of computing this. PxrSurface offers six, under
+        <strong>Subsurface Model</strong>, and defaults to
+        <strong>Jensen Dipole</strong> — the oldest and fastest of them.
+      </p>
+      <ul>
+        <li>
+          <strong>The dipole models</strong> (Jensen, d'Eon Better Dipole)
+          approximate the result of light bouncing around many times inside the
+          object. Fast, and the closest match to Arnold's
+          <strong>diffusion</strong> mode.
+        </li>
+        <li>
+          <strong>Burley Normalized</strong> sits in the middle, covering both
+          the many-bounce diffusion and the single-bounce scattering.
+        </li>
+        <li>
+          <strong>The path traced models</strong> (Exponential and
+          Non-Exponential) actually trace light through the interior. Slower
+          and noisier, but they hold up on thin geometry like ears and fingers
+          where the approximations fall apart. This is the counterpart to
+          Arnold's <strong>randomwalk</strong>.
+        </li>
+      </ul>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          If your Arnold material used <strong>randomwalk</strong> — which has
+          been the default for years — the honest equivalent is one of the
+          <strong>Path Traced</strong> options, not the Jensen Dipole you'll
+          find switched on when you open the shader. Skipping this step is the
+          usual reason converted skin loses its softness around thin edges.
+          One caveat: Mean Free Path Distance is meant for the dipole models,
+          so once you're in a Path Traced mode you drive the look from
+          Subsurface Color and Mean Free Path Color instead.
         </p>
       </div>
     </section>
@@ -419,12 +716,29 @@
         Both make a surface appear to give off its own light: screens, lava,
         lit signage, embers.
       </p>
+      <p>
+        The split is the same on both sides: a gain that says how strong, and a
+        color that says what color. <strong>Emission</strong> →
+        <strong>Glow Gain</strong>, <strong>Emission Color</strong> →
+        <strong>Glow Color</strong>. Values port over unchanged, and both
+        default to off.
+      </p>
       <p class="muted">
         Worth remembering for both shaders: this makes the surface <em>look</em>
         bright, but it doesn't efficiently light the rest of the scene the way
         an actual light source does. Treat it as a texture/look effect, not a
         lighting tool.
       </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          If the emissive surface in your Arnold scene was genuinely
+          illuminating things around it, the tool you want isn't the shader at
+          all — it's a mesh light, in both renderers. Converting the material
+          and wondering why the room went dark is a very common first
+          afternoon in a new engine.
+        </p>
+      </div>
     </section>
 
     <section id="transmission">
@@ -434,11 +748,388 @@
         Arnold's <strong>Transmission</strong> and PxrSurface's
         <strong>Glass</strong> both handle see-through materials — actual
         glass, clear liquid, thin plastic. Most character and hard-surface
-        lookdev never touches this layer, so this guide keeps it brief: if
-        you're building glass or liquid, expect a re-tuning pass rather than a
-        direct value port, for the same reason as Subsurface above — the
-        underlying math isn't parameterized identically.
+        lookdev never touches this layer, but when you do need it, one
+        structural difference matters more than all the parameter names put
+        together.
       </p>
+
+      <h3>One slider becomes two gains</h3>
+      <p>
+        In Arnold, <strong>Transmission</strong> is a single weight. Raise it
+        and the surface both refracts light through itself and reflects light
+        off itself, because those two are physically the same event seen from
+        two sides.
+      </p>
+      <p>
+        PxrSurface separates them: <strong>Refraction Gain</strong> for the
+        light passing through, <strong>Reflection Gain</strong> for the light
+        bouncing off. Pixar's converter sets both from the one Arnold value,
+        and so should you.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Setting only <strong>Refraction Gain</strong> is the classic mistake.
+          You get glass you can see through with no reflections in it at all,
+          which reads instantly as fake — real glass is doing both. Both gains
+          default to 0, so neither is set for you.
+        </p>
+      </div>
+
+      <h3>Thin walled glass</h3>
+      <p>
+        A soap bubble, a window pane, a leaf, a drinking glass modelled as a
+        single surface — all of these are "glass" that has no real interior for
+        light to travel through. Arnold's <strong>Thin Walled</strong> becomes
+        PxrSurface's <strong>Thin</strong> checkbox in the Glass section, and it
+        does exactly what you'd hope: it still splits light correctly between
+        reflection and refraction, but stops bending the ray as it passes
+        through.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Looking through a window versus looking through a solid glass brick.
+          The window is glass, and it reflects like glass, but what you see
+          through it isn't warped. Thin mode is how you say "this surface has
+          no thickness worth simulating."
+        </p>
+      </div>
+
+      <h3>Color and absorption</h3>
+      <p>
+        <strong>Transmission Color</strong> maps onto
+        <strong>Refraction Color</strong> — but only while Arnold's
+        <strong>Transmission Depth</strong> is left at 0. Once you set a depth,
+        Arnold stops treating the color as a simple tint and starts treating it
+        as "the color white light becomes after travelling this far inside the
+        object." That's absorption, and it belongs somewhere else in
+        PxrSurface: the <strong>Interior</strong> section, driven by
+        <strong>Extinction</strong>.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Transmission Depth is not a parameter you copy anywhere. It's a
+          number that gets <em>converted into</em> an extinction value — the
+          deeper the object, the more the tint accumulates. A thick green glass
+          bottle and a thin one need different extinction values in PxrSurface
+          to read as the same material, where in Arnold one depth value handled
+          both. Expect a re-tune here.
+        </p>
+      </div>
+      <p class="muted">
+        The remaining glass controls line up predictably:
+        <strong>Specular Roughness</strong> → <strong>Glass Roughness</strong>,
+        <strong>Specular IOR</strong> → <strong>Glass Refractive Index</strong>
+        (1.5 in both, which is window glass), and
+        <strong>Specular Anisotropy</strong> → <strong>Glass Anisotropy</strong>.
+      </p>
+    </section>
+
+    <section id="bump">
+      <p class="section-kicker">Surface detail</p>
+      <h2>Bump, normal &amp; displacement</h2>
+      <p>
+        AiStandardSurface takes one normal for the whole material, plus a
+        separate one for the coat. PxrSurface takes <strong>eight</strong>: a
+        global <strong>Bump</strong> in the Globals section, and then a private
+        Bump input on Diffuse, Primary Specular, Rough Specular, Clearcoat,
+        Iridescence, Fuzz and Glass.
+      </p>
+      <p>
+        That's the biggest genuine capability gain in the whole shader, and
+        also the easiest thing to get wrong on day one.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A car bonnet with scratched lacquer. The scratches are in the
+          clearcoat, not in the paint underneath — the paint is still perfectly
+          smooth. In Arnold you fake that with one shared normal and hope. In
+          PxrSurface you put the scratch bump on Clearcoat only and leave
+          Diffuse flat, which is what's physically happening.
+        </p>
+      </div>
+
+      <h3>The part that catches people</h3>
+      <p>
+        The per-lobe inputs are <em>overrides</em>. Leave one empty and that
+        lobe falls back to the global Bump, which is the behaviour you want.
+        But the moment you start connecting bumps per-lobe, any lobe you forget
+        keeps using the global one — so a material can end up with detail on
+        its specular and none on its diffuse, and it reads as a strangely
+        plastic surface without an obvious cause.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Converting a material? Connect your bump or normal map to the
+          <strong>global Bump</strong> in Globals and stop there. That
+          reproduces Arnold's single-normal behaviour exactly. Arnold's
+          <strong>Coat Normal</strong> is the one exception — it has a real
+          home in <strong>Clearcoat → Bump</strong>. Reach for the other six
+          later, deliberately, when you want something Arnold couldn't do.
+        </p>
+      </div>
+      <p class="muted">
+        These inputs only accept connections — typically a
+        <strong>PxrBump</strong> or <strong>PxrNormalMap</strong> node. Typing
+        numbers into them does nothing.
+      </p>
+
+      <h3>Displacement isn't in the shader</h3>
+      <p>
+        Worth stating plainly because it surprises people: in RenderMan,
+        displacement is a separate node (<strong>PxrDisplace</strong>) attached
+        to the material, not a parameter inside PxrSurface. You won't find it
+        by scrolling.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          The gotcha that costs an afternoon: RenderMan needs a
+          <strong>displacement bound</strong> — an attribute on the geometry
+          telling the renderer the furthest distance the surface might move. If
+          it's too small, your displacement gets silently clipped and the
+          detail simply isn't there. If a displaced surface looks flattened or
+          chopped off in RenderMan and fine in Arnold, check the bound before
+          you touch the shader.
+        </p>
+      </div>
+    </section>
+
+    <section id="presence">
+      <p class="section-kicker">Surface detail</p>
+      <h2>Presence &amp; opacity</h2>
+      <p>
+        This is how you cut shapes out of geometry: leaf cards, hair cards,
+        chain-link fence, a torn poster. Arnold calls it
+        <strong>Opacity</strong>. PxrSurface calls it
+        <strong>Presence</strong>. They are not the same kind of control.
+      </p>
+      <p>
+        Arnold's Opacity is a <em>color</em>. You can make a surface let red
+        light through while blocking green — stained glass done cheaply, or a
+        tinted shadow. PxrSurface's Presence is a single <em>float</em>. There
+        is nowhere for the color to go.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A stencil versus a piece of tinted film. Presence is a stencil: this
+          bit of the surface is here, that bit isn't. Opacity can be either a
+          stencil or tinted film, depending how you drive it.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Pixar's own converter handles the mismatch by taking the
+          <em>luminance</em> of your RGB opacity and throwing the color away.
+          If your Arnold material used colored opacity for a real effect, that
+          effect does not convert — rebuild it with the Glass layer, which is
+          where colored see-through belongs in PxrSurface.
+        </p>
+      </div>
+
+      <h3>Presence wants 0 or 1 — nothing in between</h3>
+      <p>
+        RenderMan's documentation is unusually blunt about this: Presence is
+        meant to be a binary mask, taking intermediate values only along edges
+        so the cutout can antialias. A value parked halfway between 0 and 1
+        across a whole surface produces noise rather than transparency.
+      </p>
+      <p>
+        So if you were using Arnold's Opacity at, say, 0.5 to make something
+        generally see-through, that isn't a Presence job. Presence answers
+        "is there surface here?" — not "how transparent is it?" For actual
+        semi-transparency, use the Glass layer.
+      </p>
+    </section>
+
+    <section id="iridescence">
+      <p class="section-kicker">Optional layer</p>
+      <h2>Iridescence &amp; thin film</h2>
+      <p>
+        Arnold's <strong>Thin Film Thickness</strong> and
+        <strong>Thin Film IOR</strong> become PxrSurface's
+        <strong>Iridescence</strong> section. Both produce the same effect:
+        color that shifts as the surface turns, coming from a film too thin to
+        see.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A film of oil on a wet road, or a soap bubble just before it pops.
+          The rainbow isn't pigment — it's an extremely thin transparent layer
+          where light reflecting off the top and off the bottom interferes with
+          itself, and which colors survive depends on the angle you're standing
+          at.
+        </p>
+      </div>
+      <p>
+        PxrSurface offers two ways in, under <strong>Iridescence Mode</strong>:
+      </p>
+      <ul>
+        <li>
+          <strong>Physical</strong> — you give it a
+          <strong>Thin Film Thickness</strong> in nanometres, exactly as in
+          Arnold. This is the mode to use when converting.
+        </li>
+        <li>
+          <strong>Artistic</strong> — you pick two colors and let the shader
+          sweep between them. There's no Arnold equivalent, and it's the
+          default, so a converted material won't be reading your thickness
+          value until you switch modes.
+        </li>
+      </ul>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Both shaders measure thickness in nanometres, so the number ports
+          directly — but switch <strong>Iridescence Mode</strong> to
+          <strong>Physical</strong> first, or the thickness field is ignored
+          (it's hidden in Artistic mode). PxrSurface's default thickness is
+          800 nm, which is a visible effect; Arnold's is 0, which is none. A
+          material that arrives faintly rainbow-tinted for no reason is usually
+          this.
+        </p>
+      </div>
+    </section>
+
+    <section id="first-15">
+      <p class="section-kicker">Getting started</p>
+      <h2>Your first 15 minutes in PxrSurface</h2>
+      <p>
+        Assign a fresh PxrSurface and it renders as a dark grey ball with no
+        highlight at all. That's not a mistake — PxrSurface starts with almost
+        everything switched off, where AiStandardSurface starts with a usable
+        plastic. Knowing the defaults saves a lot of confusion.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Control</th>
+              <th>AiStandardSurface</th>
+              <th>PxrSurface</th>
+              <th>What it means in practice</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Base / Diffuse Color</td>
+              <td class="col-arnold">0.8</td>
+              <td class="col-pxr">0.18</td>
+              <td>A fresh PxrSurface is much darker. It's not lit wrong — it's mid-grey by design.</td>
+            </tr>
+            <tr>
+              <td>Specular</td>
+              <td class="col-arnold">weight 1, color white</td>
+              <td class="col-pxr">Face &amp; Edge Color both black</td>
+              <td>PxrSurface has <em>no specular at all</em> until you set a color. Nothing is broken.</td>
+            </tr>
+            <tr>
+              <td>Specular Model</td>
+              <td class="col-arnold">GGX (always)</td>
+              <td class="col-pxr">Beckmann</td>
+              <td>Switch to GGX to match a ported look.</td>
+            </tr>
+            <tr>
+              <td>Specular Roughness</td>
+              <td class="col-arnold">0.2</td>
+              <td class="col-pxr">0.2</td>
+              <td>Same number — but Arnold squares it internally, so identical values won't look identical.</td>
+            </tr>
+            <tr>
+              <td>Fresnel / IOR</td>
+              <td class="col-arnold">1.5</td>
+              <td class="col-pxr">1.5, Artistic mode</td>
+              <td>The IOR only does anything once you switch to Physical mode.</td>
+            </tr>
+            <tr>
+              <td>Clearcoat Roughness</td>
+              <td class="col-arnold">0.1</td>
+              <td class="col-pxr">0.0</td>
+              <td>PxrSurface's coat is perfectly sharp by default — a mirror, easy to miss on a rough base.</td>
+            </tr>
+            <tr>
+              <td>Subsurface Distance</td>
+              <td class="col-arnold">Scale 1</td>
+              <td class="col-pxr">Mean Free Path 10</td>
+              <td>Ten times further. Copy Radius across without fixing this and skin turns to wax.</td>
+            </tr>
+            <tr>
+              <td>Fuzz / Sheen falloff</td>
+              <td class="col-arnold">Roughness 0.3</td>
+              <td class="col-pxr">Cone Angle 8°</td>
+              <td>Different unit entirely. Use 32 × Sheen Roughness.</td>
+            </tr>
+            <tr>
+              <td>Iridescence thickness</td>
+              <td class="col-arnold">0 nm (off)</td>
+              <td class="col-pxr">800 nm</td>
+              <td>Only active in Physical mode, but a real value sitting there waiting.</td>
+            </tr>
+            <tr>
+              <td>Presence / Opacity</td>
+              <td class="col-arnold">white (opaque)</td>
+              <td class="col-pxr">1 (opaque)</td>
+              <td>Same starting point, different type.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The order to work in</h3>
+      <p>
+        Layers sit on top of each other, so build from the bottom. Judging a
+        highlight before the diffuse underneath it is right just means doing it
+        twice.
+      </p>
+      <ol class="steps">
+        <li>
+          <strong>Diffuse first.</strong> Copy Base Color into Diffuse Color and
+          Base Weight into Diffuse Gain. Look at it with no specular. If this
+          reads wrong, nothing above it will save you.
+        </li>
+        <li>
+          <strong>Set the specular model to GGX</strong>, on both Primary
+          Specular and Clearcoat, before you judge any highlight.
+        </li>
+        <li>
+          <strong>Give the specular a color.</strong> It starts black, meaning
+          off. For non-metals, a low neutral Face Color and a near-white Edge
+          Color. For metals, push both toward the metal's own color.
+        </li>
+        <li>
+          <strong>Now pay the energy bill.</strong> If this is a metal, take
+          Diffuse Gain to 0. If you raised Subsurface, take Diffuse Gain down
+          to match. Nothing does this for you here.
+        </li>
+        <li>
+          <strong>Roughness.</strong> Arnold squares its roughness internally
+          and PxrSurface doesn't, so treat your old value as a starting point,
+          not an answer.
+        </li>
+        <li>
+          <strong>Coat, then detail.</strong> Clearcoat, then bump into the
+          global Bump input, then Presence for cutouts. Save the per-lobe bump
+          inputs for when you actually want them.
+        </li>
+      </ol>
+
+      <h3>Before you decide the renderer is lying</h3>
+      <ul>
+        <li>Is <strong>Specular Face Color</strong> still black? Then there is no specular.</li>
+        <li>Is <strong>Specular Model</strong> still Beckmann? Then the highlight shape is not Arnold's.</li>
+        <li>For a metal — is <strong>Diffuse Gain</strong> still above 0?</li>
+        <li>For glass — did you set <strong>both</strong> Refraction Gain and Reflection Gain?</li>
+        <li>For skin — is <strong>Mean Free Path Distance</strong> still sitting at 10?</li>
+        <li>For displacement — is the <strong>displacement bound</strong> large enough?</li>
+      </ul>
     </section>
 
     <section id="pitfalls">
@@ -479,25 +1170,87 @@
           Face and Edge Color set intentionally, not just one.
         </p>
       </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The highlight is the wrong shape at the same roughness"</div>
+        <p>
+          PxrSurface defaults to the Beckmann specular model; Arnold is always
+          GGX. Beckmann's highlight stops more abruptly, GGX keeps a soft tail.
+          Switch <strong>Specular Model</strong> to GGX — and remember
+          Clearcoat has its own separate one.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The surface detail is only on part of the material"</div>
+        <p>
+          PxrSurface has a bump input on every lobe, not just one for the whole
+          shader. If you connected bump to Specular but not Diffuse, half the
+          material is flat. When converting, use the global
+          <strong>Bump</strong> in Globals and leave the per-lobe ones empty.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The leaf cards are noisy or have dark edges"</div>
+        <p>
+          Presence expects 0 or 1, not values in between — anything parked
+          halfway produces noise. And if your Arnold material relied on
+          <em>colored</em> opacity, that information is gone: only the
+          luminance survives. Colored see-through belongs in the Glass layer.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The glass has no reflections in it"</div>
+        <p>
+          Arnold's single Transmission slider becomes two separate controls.
+          Setting <strong>Refraction Gain</strong> without
+          <strong>Reflection Gain</strong> gives you something you can see
+          through that never catches the light. Set both to your old
+          Transmission value.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The displaced detail is flattened or missing"</div>
+        <p>
+          Not a shader problem. Displacement is a separate PxrDisplace node,
+          and RenderMan clips it at the geometry's displacement bound. Too
+          small a bound silently chops the detail off.
+        </p>
+      </div>
     </section>
 
-    <div class="card card--soon" style="margin-top: 3rem;">
-      <span class="badge">Coming soon</span>
-      <h3>Lama vs PxrSurface</h3>
+    <div class="card card--trailing">
+      <span class="badge">Next guide</span>
+      <h3>PxrSurface vs Lama</h3>
       <p class="muted">
-        A follow-up guide comparing Arnold's layered material (Lama) system
-        against PxrSurface is planned as a second pass. Not published yet.
+        PxrSurface isn't the only way to build a material in RenderMan.
+        MaterialX Lama takes the opposite approach — small single-purpose nodes
+        you wire together yourself. The companion guide covers when each one is
+        the right tool.
       </p>
+      <p><a href="lama.html">Read the guide →</a></p>
     </div>
 
   </main>
 </div>
 
 <footer>
-  Written for lookdev and lighting artists switching render engines. No prior
-  shader-writing knowledge assumed. Parameter names reflect current
-  RenderMan and Arnold documentation at time of writing — always sanity check
-  against the version installed in your pipeline.
+  <p>
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p>
+    Parameter names, defaults and conversion factors on this page were checked
+    against the <strong>PxrSurface</strong> shader definition in RenderMan 27,
+    the <strong>Autodesk Standard Surface</strong> specification, and Pixar's
+    own Standard Surface → PxrSurface conversion shader shipped with RenderMan
+    for Maya. Always sanity check against the version installed in your
+    pipeline.
+  </p>
+  <p class="muted">Last updated: 26 August 2026.</p>
 </footer>
 
 </body>

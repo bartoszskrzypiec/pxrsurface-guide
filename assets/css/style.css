@@ -195,6 +195,17 @@ h3 { font-size: 1.15rem; margin-top: 2rem; color: var(--text); }
 
 .muted { color: var(--text-muted); }
 
+code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.86em;
+  word-break: break-word;
+}
+
+td code, th code { font-size: 0.82em; }
+
 /* ---------- Cards / grid ---------- */
 .card-grid {
   display: grid;
@@ -217,6 +228,8 @@ h3 { font-size: 1.15rem; margin-top: 2rem; color: var(--text); }
   opacity: 0.75;
   border-style: dashed;
 }
+
+.card--trailing { margin-top: 3rem; }
 
 .badge {
   display: inline-block;
@@ -303,6 +316,38 @@ td.col-pxr { color: var(--pxr); font-weight: 600; }
 }
 
 .analogy .section-kicker { color: var(--text-muted); }
+
+/* ---------- Numbered conversion checklist ---------- */
+.steps {
+  counter-reset: step;
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+
+.steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 0 2.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.1rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  background: var(--pxr-soft);
+  color: var(--pxr);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ---------- Roughness gradient bar ---------- */
 .slider-viz { margin: 1.25rem 0 1.75rem; }

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PxrSurface vs Lama Guide</title>
+<meta name="description" content="A plain-language guide for artists choosing between RenderMan's PxrSurface and MaterialX Lama: one big shader versus a graph of small ones.">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="lama.html" class="active">PxrSurface vs Lama</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker">Comparison guide</p>
+  <h1>PxrSurface vs Lama</h1>
+  <p class="lead">
+    Two ways to build a material in the same renderer. PxrSurface hands you one
+    node with every layer already in it; MaterialX Lama hands you a box of
+    single-purpose parts and lets you assemble the material yourself. This
+    guide explains how Lama thinks, what maps onto what, and how to tell which
+    one a job actually needs.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#what-lama-is">First, what Lama actually is</a></li>
+      <li><a href="#mental-model">The mental model</a></li>
+      <li><a href="#vocabulary">The Lama vocabulary</a></li>
+      <li><a href="#combining">Mix vs Add vs Layer</a></li>
+      <li><a href="#lookup">Lobe → node lookup</a></li>
+      <li><a href="#metals">Metals</a></li>
+      <li><a href="#which">Which one should you use</a></li>
+      <li><a href="#pitfalls">Common pitfalls</a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="what-lama-is">
+      <h2>First, what Lama actually is</h2>
+      <p>
+        Worth clearing up before anything else, because the name travels
+        further than the facts do: <strong>Lama is not an Arnold feature.</strong>
+        It was developed at Industrial Light &amp; Magic, contributed to the
+        open <strong>MaterialX</strong> standard, and has shipped inside
+        RenderMan since version 24.
+      </p>
+      <p>
+        So this guide isn't a comparison between two renderers. It's a
+        comparison between two toolkits that live side by side in the same one,
+        and that you choose between per material. Nothing here requires you to
+        leave RenderMan or change anything about how you render.
+      </p>
+      <p class="muted">
+        Because Lama is a MaterialX standard rather than a RenderMan-only
+        shader, the same material description is also understood by other
+        MaterialX-aware software — which is part of why studios adopt it.
+      </p>
+    </section>
+
+    <section id="mental-model">
+      <h2>The mental model</h2>
+      <p>
+        PxrSurface is one node containing a fixed stack of layers — diffuse,
+        specular, clearcoat, fuzz, subsurface, glass, glow — all present all the
+        time, most of them switched off. You work by turning on the parts of a
+        stack that already exists.
+      </p>
+      <p>
+        Lama has no stack. It gives you individual materials, each one doing
+        exactly one thing, and separate nodes whose only job is to combine two
+        materials into one. You build the stack yourself, in whatever shape the
+        material actually needs.
+      </p>
+
+      <div class="stack-compare">
+        <div class="stack stack--arnold">
+          <div class="stack__title stack__title--arnold">PxrSurface — one node, fixed stack</div>
+          <div class="stack__layers">
+            <div class="stack__layer">Clearcoat</div>
+            <div class="stack__layer">Iridescence</div>
+            <div class="stack__layer">Fuzz</div>
+            <div class="stack__layer">Specular + Rough Specular</div>
+            <div class="stack__layer">Glass</div>
+            <div class="stack__layer">Subsurface</div>
+            <div class="stack__layer">Diffuse</div>
+            <div class="stack__layer">Glow</div>
+          </div>
+        </div>
+        <div class="stack stack--pxr">
+          <div class="stack__title stack__title--pxr">Lama — a graph you assemble</div>
+          <div class="stack__layers">
+            <div class="stack__layer">LamaSurface</div>
+            <div class="stack__layer">↑ LamaLayer</div>
+            <div class="stack__layer">LamaDielectric (the coat)</div>
+            <div class="stack__layer">↑ over ↑</div>
+            <div class="stack__layer">LamaConductor (the metal)</div>
+            <div class="stack__layer">— and nothing else —</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A Swiss Army knife versus a toolbox. The knife has everything in it
+          already, always the same tools in the same order, and for most jobs
+          that's genuinely faster. The toolbox holds fewer things at once but
+          lets you bring exactly what the job needs — and lets you bring two
+          screwdrivers when a job needs two.
+        </p>
+      </div>
+
+      <p>
+        That last part is the real difference. PxrSurface has one clearcoat
+        because the stack has a slot for one clearcoat. In Lama, "coat over
+        metal" is a Layer node, so "coat over metal over primer" is just
+        another Layer node wrapped around the first. Nothing has to be
+        faked.
+      </p>
+    </section>
+
+    <section id="vocabulary">
+      <h2>The Lama vocabulary</h2>
+      <p>
+        There are fewer nodes than you'd expect. They split cleanly into three
+        groups.
+      </p>
+
+      <h3>Materials — the things that respond to light</h3>
+      <ul>
+        <li><strong>LamaDiffuse</strong> — the matte base. Your Diffuse lobe.</li>
+        <li><strong>LamaConductor</strong> — metals, and only metals. See below.</li>
+        <li><strong>LamaDielectric</strong> — everything non-metal that reflects or refracts: plastic, glass, water, varnish, a clearcoat.</li>
+        <li><strong>LamaSSS</strong> — subsurface scattering. <strong>LamaTriColorSSS</strong> is a skin-oriented variant.</li>
+        <li><strong>LamaSheen</strong> — cloth and dust. The Fuzz equivalent.</li>
+        <li><strong>LamaTranslucent</strong> — light passing diffusely through thin things: paper, a leaf, a lampshade.</li>
+        <li><strong>LamaIridescence</strong> — thin-film color shift.</li>
+        <li><strong>LamaEmission</strong> — glow.</li>
+        <li><strong>LamaGeneralizedSchlick</strong> — a general-purpose reflection model for when you want direct control rather than a physical description.</li>
+      </ul>
+
+      <h3>Operators — the things that combine materials</h3>
+      <ul>
+        <li><strong>LamaMix</strong> — blend between two materials.</li>
+        <li><strong>LamaAdd</strong> — sum two materials.</li>
+        <li><strong>LamaLayer</strong> — put one material on top of another.</li>
+      </ul>
+
+      <h3>The end of the graph</h3>
+      <ul>
+        <li><strong>LamaSurface</strong> — where the finished material plugs in, the way PxrSurface plugs into a shading group.</li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout__title">↔ Coming from PxrSurface</div>
+        <p>
+          Notice what isn't there: no gains, no lobe checkboxes, no "off by
+          default." A Lama node that exists in your graph is contributing. You
+          remove a lobe by deleting a node, not by zeroing a value. This makes
+          Lama graphs easier to read at a glance — what you see is what the
+          material does.
+        </p>
+      </div>
+    </section>
+
+    <section id="combining">
+      <h2>Mix vs Add vs Layer</h2>
+      <p>
+        Three operators that all take two materials and return one. Choosing
+        the wrong one is the most common way a Lama material goes wrong, and
+        the difference is genuinely simple once stated.
+      </p>
+
+      <h3>LamaMix — two materials in different places</h3>
+      <p>
+        A blend, controlled by a mask. At 0 you get the first material, at 1
+        you get the second, and in between you get a weighted blend. Feed it a
+        texture and it becomes "material 2 wherever the mask is white."
+      </p>
+      <p>
+        This is the one for materials that occupy <em>different parts of the
+        surface</em>: rust patches on painted steel, mud spattered on a boot,
+        a label on a bottle. The two materials never coexist at the same point.
+      </p>
+
+      <h3>LamaLayer — one material on top of another</h3>
+      <p>
+        A coating. The top material sits over the base, and light that isn't
+        reflected by the top passes through to the base underneath — which is
+        what actually happens physically when you varnish a piece of wood.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Laminating a photograph. The plastic goes over the whole picture, not
+          in patches. It adds its own sheen, and you still see the photograph
+          through it, slightly changed. Both things are present at every point
+          on the surface.
+        </p>
+      </div>
+      <p>
+        LamaLayer has a <strong>Top Thickness</strong> input, which is what
+        makes it more than a fancy blend: it tells the renderer how far light
+        travels through the top slab, so a coat with absorption in it tints
+        what's underneath by the right amount. A thick tinted lacquer and a thin
+        one behave differently, correctly, for free.
+      </p>
+      <p class="muted">
+        LamaLayer is the node that makes Lama worth using. Layer a dielectric
+        over a conductor and you have physically-correct car paint — the coat
+        taking its share of the light first, the metal getting what's left.
+      </p>
+
+      <h3>LamaAdd — two responses at the same point</h3>
+      <p>
+        A straight sum, with a weight for each side. Both materials contribute
+        fully and independently.
+      </p>
+      <p>
+        This is the one to be careful with. Add is how you'd combine two
+        specular responses that genuinely coexist — but because it's a plain
+        sum, nothing stops the total exceeding the light that arrived. Two
+        materials at full weight added together reflect twice as much light as
+        the surface received.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from PxrSurface</div>
+        <p>
+          If you read the "who balances the layers" section of the
+          <a href="guide.html#energy">PxrSurface guide</a>, this is the same
+          trap in a new shape. Lama gives you the honest tool for coatings
+          (Layer) and the dangerous one (Add) side by side. When in doubt about
+          a coating, reach for <strong>LamaLayer</strong>, not
+          <strong>LamaAdd</strong> — Layer conserves energy for you, Add does
+          not.
+        </p>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>Use when</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-pxr">LamaMix</td>
+              <td>The two materials are in different <em>places</em></td>
+              <td>Rust patches on steel, a decal on plastic</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">LamaLayer</td>
+              <td>One material <em>covers</em> the other</td>
+              <td>Clearcoat on car paint, varnish on wood, wet skin</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">LamaAdd</td>
+              <td>Both respond at the same point, independently</td>
+              <td>A second broad sheen under a tight highlight</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="lookup">
+      <h2>Lobe → node lookup</h2>
+      <p>
+        If you know PxrSurface, this is the fastest route in: find the lobe you
+        already understand and read across.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>PxrSurface lobe</th>
+              <th>Lama equivalent</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-arnold">Diffuse</td>
+              <td class="col-pxr">LamaDiffuse</td>
+              <td>Direct equivalent.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Specular (metal)</td>
+              <td class="col-pxr">LamaConductor</td>
+              <td>Metals get their own node instead of a colored Fresnel — see below.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Specular (non-metal)</td>
+              <td class="col-pxr">LamaDielectric, layered over the base</td>
+              <td>The "varnish on paint" relationship becomes an explicit LamaLayer.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Rough Specular</td>
+              <td class="col-pxr">A second LamaDielectric</td>
+              <td>Lama has no fixed limit — add as many as the material needs.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Clearcoat</td>
+              <td class="col-pxr">LamaDielectric as the top of a LamaLayer</td>
+              <td>Not a special layer type. A coat is just a dielectric on top of something.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Iridescence</td>
+              <td class="col-pxr">LamaIridescence</td>
+              <td>Direct equivalent.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Fuzz</td>
+              <td class="col-pxr">LamaSheen</td>
+              <td>Direct equivalent.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Subsurface</td>
+              <td class="col-pxr">LamaSSS / LamaTriColorSSS</td>
+              <td>TriColor is the skin-oriented variant.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Glass</td>
+              <td class="col-pxr">LamaDielectric</td>
+              <td>Same node as plastic and varnish — glass is just a dielectric you can see through.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Interior / absorption</td>
+              <td class="col-pxr">LamaDielectric → Absorption Color &amp; Radius</td>
+              <td>Lives on the dielectric itself rather than in a separate section.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Glow</td>
+              <td class="col-pxr">LamaEmission</td>
+              <td>Direct equivalent.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold"><em>No equivalent</em></td>
+              <td class="col-pxr">LamaTranslucent</td>
+              <td>Diffuse transmission through thin surfaces — paper, leaves, lampshades.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Presence</td>
+              <td class="col-pxr"><em>Handled outside the material</em></td>
+              <td>Cutouts aren't a Lama node; they stay a geometry-level concern.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="metals">
+      <h2>Metals</h2>
+      <p>
+        If you came through the <a href="guide.html#specular">AiStandardSurface
+        guide</a>, you'll remember that metals in PxrSurface mean tinting Face
+        and Edge Color by hand and remembering to zero the diffuse. Lama takes
+        the opposite approach: a metal is a different <em>node</em>, not a
+        differently-tuned one.
+      </p>
+      <p>
+        <strong>LamaConductor</strong> only does metal. There's no diffuse lobe
+        inside it to accidentally leave switched on, which quietly removes the
+        single most common metal mistake in PxrSurface.
+      </p>
+      <p>It offers two ways to describe the metal:</p>
+      <ul>
+        <li>
+          <strong>Artistic mode</strong> — <strong>Reflectivity</strong> (the
+          color reflected head-on) and <strong>Edge Color</strong> (how that
+          shifts at grazing angles). Conceptually identical to PxrSurface's
+          Face and Edge Color, so anything you learned there transfers
+          directly.
+        </li>
+        <li>
+          <strong>Scientific mode</strong> — <strong>IOR</strong> and
+          <strong>Extinction</strong>, three numbers each, taken from measured
+          data for real metals. Copper, aluminium and gold all have published
+          values.
+        </li>
+      </ul>
+      <p class="muted">
+        LamaConductor ships defaulting to gold, in both parameterisations. Drop
+        one into a graph and it looks like gold immediately — a useful sanity
+        check that the node is doing something.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from PxrSurface</div>
+        <p>
+          There's a <strong>Tint</strong> input, and the documentation asks you
+          to use it "with parsimony, as a non-white value breaks physicality."
+          That's a fair warning: Tint is a multiplier over the whole result, not
+          a description of the metal. Colour your metal through Reflectivity and
+          Edge Color, and keep Tint for art-directed cheats you're making on
+          purpose.
+        </p>
+      </div>
+      <p>
+        Car paint is the example that shows the whole system working: a
+        <strong>LamaConductor</strong> for the flake, a
+        <strong>LamaDielectric</strong> for the lacquer, joined by a
+        <strong>LamaLayer</strong>. Three nodes, no gains to balance, and the
+        coat correctly takes its share of the light before the metal sees any.
+      </p>
+    </section>
+
+    <section id="which">
+      <h2>Which one should you use</h2>
+      <p>
+        Neither is the upgrade. They're shaped for different problems, and most
+        studios end up using both.
+      </p>
+
+      <h3>Reach for PxrSurface when</h3>
+      <ul>
+        <li>The material fits the stack — most props, sets and hard surfaces do.</li>
+        <li>You want one node in the graph and one place to look when something's wrong.</li>
+        <li>You're converting existing materials from another renderer, where the parameter-for-parameter mapping matters more than elegance.</li>
+        <li>You need Presence for cutouts, or the per-lobe bump inputs.</li>
+      </ul>
+
+      <h3>Reach for Lama when</h3>
+      <ul>
+        <li>The material is genuinely layered — lacquer over metallic flake over primer — and the stack's single clearcoat isn't enough.</li>
+        <li>You need two of something PxrSurface only has one of.</li>
+        <li>Your pipeline is MaterialX-based and the material has to travel to other software.</li>
+        <li>You want the graph itself to document the material, rather than a node with two hundred parameters where only nine are non-default.</li>
+      </ul>
+
+      <div class="callout">
+        <div class="callout__title">A reasonable default</div>
+        <p>
+          Start with PxrSurface. Move a material to Lama when you catch
+          yourself fighting the fixed stack — faking a second coat, or wanting a
+          layer relationship the stack doesn't offer. That moment is a real
+          signal, and it doesn't arrive for most materials.
+        </p>
+      </div>
+    </section>
+
+    <section id="pitfalls">
+      <h2>Common pitfalls</h2>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "My layered material is too bright"</div>
+        <p>
+          Almost always <strong>LamaAdd</strong> where
+          <strong>LamaLayer</strong> was wanted. Add sums both materials at full
+          strength; Layer makes the top one take its share first and pass the
+          rest down. For anything that reads as a coating, use Layer.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The mask blends the wrong way round"</div>
+        <p>
+          LamaMix runs 0 → Material 1 and 1 → Material 2. It helps to read the
+          mix input as a mask for <em>Material 2 over Material 1</em>, and plug
+          your two materials in accordingly rather than inverting textures.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "My metal has a diffuse sheen I can't remove"</div>
+        <p>
+          If you built the metal from LamaDiffuse plus a reflection instead of
+          using <strong>LamaConductor</strong>, you've recreated the PxrSurface
+          metal problem by hand. Metals have no diffuse component — use the node
+          that has none.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The tinted coat doesn't tint what's under it"</div>
+        <p>
+          Absorption in a LamaLayer's top material needs
+          <strong>Top Thickness</strong> to be non-zero — it defaults to 0,
+          meaning no interior distance for light to travel through, so no
+          tinting. Set it before assuming the absorption color is broken.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "I can't find the cutout parameter"</div>
+        <p>
+          There isn't one. Presence has no Lama node — cutouts stay a
+          geometry-level concern. If a material's whole job is leaf cards,
+          that's a point in PxrSurface's favour.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--trailing">
+      <span class="badge">Companion guide</span>
+      <h3>AiStandardSurface → PxrSurface</h3>
+      <p class="muted">
+        Coming to RenderMan from Arnold? The parameter-by-parameter transition
+        guide covers the stack this page compares against.
+      </p>
+      <p><a href="guide.html">Read the guide →</a></p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <p>
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p>
+    Node names, inputs and defaults on this page were checked against the
+    <strong>MaterialX Lama</strong> node definitions in the Academy Software
+    Foundation's MaterialX libraries and the Lama nodes shipped with RenderMan
+    27. Always sanity check against the version installed in your pipeline.
+  </p>
+  <p class="muted">Last updated: 26 August 2026.</p>
+</footer>
+
+</body>
+</html>
