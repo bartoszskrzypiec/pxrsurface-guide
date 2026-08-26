@@ -4,7 +4,7 @@ Plain-language reference guides that help lookdev/lighting artists move
 between shading models, without needing a technical or shader-writing
 background.
 
-**Live site:** _(link added after GitHub Pages is enabled)_
+**Live site:** https://bartoszskrzypiec.github.io/pxrsurface-guide/
 
 ## Contents
 
