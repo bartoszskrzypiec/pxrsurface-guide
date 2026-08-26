@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shader Migration Guides</title>
+<meta name="description" content="Plain-language guides for artists moving between shading models: AiStandardSurface to PxrSurface, and more.">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html" class="active">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="#" class="disabled">Lama vs PxrSurface (soon)</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker">For artists, not engineers</p>
+  <h1>Moving between shaders, without losing your look.</h1>
+  <p class="lead">
+    These guides translate one shading model into another using plain language and
+    analogies — no math, no code. If you already have an intuition for lighting a
+    surface in one renderer, you already have most of what you need for the next one.
+  </p>
+</header>
+
+<main class="page">
+  <div class="card-grid">
+    <div class="card">
+      <span class="badge">Available now</span>
+      <h3>AiStandardSurface → PxrSurface</h3>
+      <p class="muted">
+        A parameter-by-parameter walkthrough for artists moving from Arnold's
+        AiStandardSurface to RenderMan's PxrSurface — what each control is
+        called on the other side, what changes conceptually, and the
+        gotchas that trip people up first.
+      </p>
+      <p><a href="guide.html">Read the guide →</a></p>
+    </div>
+
+    <div class="card card--soon">
+      <span class="badge">Coming soon</span>
+      <h3>Lama vs PxrSurface</h3>
+      <p class="muted">
+        A second comparison guide, covering Arnold's layered material
+        (Lama) system side-by-side with PxrSurface. Not published yet —
+        check back soon.
+      </p>
+    </div>
+  </div>
+
+  <h2>How to use these guides</h2>
+  <p>
+    Each guide starts with a quick-reference table so you can look up a single
+    parameter fast, then goes deeper into each group of controls with a
+    plain-language explanation, a real-world analogy, and a callout for
+    anything that behaves differently than you'd expect coming from the other
+    shader. You don't need to read them front to back — jump to the section
+    you need.
+  </p>
+</main>
+
+<footer>
+  Written for lookdev and lighting artists switching render engines. No prior
+  shader-writing knowledge assumed.
+</footer>
+
+</body>
+</html>

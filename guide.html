@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AiStandardSurface → PxrSurface Guide</title>
+<meta name="description" content="A plain-language guide for non-technical artists moving from Arnold's AiStandardSurface to RenderMan's PxrSurface.">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html" class="active">AiStandardSurface → PxrSurface</a>
+    <a href="#" class="disabled">Lama vs PxrSurface (soon)</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker">Transition guide</p>
+  <h1>AiStandardSurface → PxrSurface</h1>
+  <p class="lead">
+    Same job, different toolbox. This guide maps Arnold's AiStandardSurface
+    controls onto RenderMan's PxrSurface, explains what each parameter is
+    actually doing to the light, and flags the handful of places the two
+    shaders think about materials differently.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#mental-model">The mental model</a></li>
+      <li><a href="#quick-reference">Quick reference table</a></li>
+      <li><a href="#diffuse">Diffuse / Base</a></li>
+      <li><a href="#specular">Specular &amp; "metalness"</a></li>
+      <li><a href="#clearcoat">Clearcoat</a></li>
+      <li><a href="#fuzz">Sheen → Fuzz</a></li>
+      <li><a href="#subsurface">Subsurface scattering</a></li>
+      <li><a href="#glow">Emission → Glow</a></li>
+      <li><a href="#transmission">Transmission / Glass</a></li>
+      <li><a href="#pitfalls">Common pitfalls</a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="mental-model">
+      <h2>The mental model</h2>
+      <p>
+        Both shaders are "one node does everything" surface shaders — you're not
+        switching to a node-graph-per-material workflow. PxrSurface is built the
+        same way AiStandardSurface is: a stack of light-response <strong>layers</strong>
+        (diffuse, specular, a coat, subsurface, and so on) that all live inside one
+        shader and blend together. The stack is just organized and named a little
+        differently.
+      </p>
+
+      <div class="stack-compare">
+        <div class="stack stack--arnold">
+          <div class="stack__title stack__title--arnold">AiStandardSurface</div>
+          <div class="stack__layers">
+            <div class="stack__layer">Coat</div>
+            <div class="stack__layer">Sheen</div>
+            <div class="stack__layer">Specular (+ Metalness)</div>
+            <div class="stack__layer">Transmission</div>
+            <div class="stack__layer">Subsurface</div>
+            <div class="stack__layer">Base (Diffuse)</div>
+            <div class="stack__layer">Emission</div>
+          </div>
+        </div>
+        <div class="stack stack--pxr">
+          <div class="stack__title stack__title--pxr">PxrSurface</div>
+          <div class="stack__layers">
+            <div class="stack__layer">Clearcoat</div>
+            <div class="stack__layer">Fuzz</div>
+            <div class="stack__layer">Specular (Fresnel-driven)</div>
+            <div class="stack__layer">Glass</div>
+            <div class="stack__layer">Subsurface</div>
+            <div class="stack__layer">Diffuse</div>
+            <div class="stack__layer">Glow</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="muted">
+        Same seven jobs, different names for most of them. The one layer that
+        genuinely works differently — not just a rename — is Specular, because
+        that's where "metalness" lives in Arnold and doesn't exist as a single
+        slider in PxrSurface. More on that below.
+      </p>
+    </section>
+
+    <section id="quick-reference">
+      <h2>Quick reference table</h2>
+      <p>Look up a single control here, then jump to its section below for the full explanation.</p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>AiStandardSurface</th>
+              <th>PxrSurface</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-arnold">Base Color</td>
+              <td class="col-pxr">Diffuse Color</td>
+              <td>Direct swap.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Base Weight</td>
+              <td class="col-pxr">Diffuse Gain</td>
+              <td>Direct swap.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Diffuse Roughness</td>
+              <td class="col-pxr">Diffuse Roughness</td>
+              <td>Same idea: a flatter, more "powdery" diffuse response at higher values.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Specular Color</td>
+              <td class="col-pxr">Specular Face Color / Edge Color</td>
+              <td>PxrSurface splits specular color into face-on vs. grazing-angle color.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Specular Roughness</td>
+              <td class="col-pxr">Specular Roughness</td>
+              <td>Same idea, values feel similar in practice.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Specular IOR</td>
+              <td class="col-pxr">Specular IOR (Physical Fresnel mode)</td>
+              <td>Only used if you switch Fresnel Mode to Physical — see below.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Metalness</td>
+              <td class="col-pxr"><em>No direct equivalent</em></td>
+              <td>Achieved via Specular Edge/Face Color instead. Biggest conceptual jump — see below.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Coat</td>
+              <td class="col-pxr">Clearcoat</td>
+              <td>Same purpose, own Face/Edge Color and roughness.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Sheen</td>
+              <td class="col-pxr">Fuzz</td>
+              <td>Same purpose (cloth/dust/velvet edge glow), different name and roughness curve.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Subsurface</td>
+              <td class="col-pxr">Subsurface</td>
+              <td>Both exist, but are dialled in with different parameters — see below.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Emission / Emission Color</td>
+              <td class="col-pxr">Glow / Glow Color</td>
+              <td>Direct swap, just renamed.</td>
+            </tr>
+            <tr>
+              <td class="col-arnold">Transmission</td>
+              <td class="col-pxr">Glass (specular transmission)</td>
+              <td>Both support glass; rarely touched by most artists, kept brief here.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="diffuse">
+      <p class="section-kicker">Layer 1</p>
+      <h2>Diffuse / Base</h2>
+      <p>
+        This is the matte, non-shiny part of the material — the color you'd see
+        under totally flat, shadowless lighting. In Arnold it's called
+        <strong>Base</strong>; in PxrSurface it's called <strong>Diffuse</strong>.
+        Same job, new label.
+      </p>
+
+      <h3>Diffuse Color / Gain</h3>
+      <p>
+        <strong>Base Color</strong> → <strong>Diffuse Color</strong>, and
+        <strong>Base Weight</strong> → <strong>Diffuse Gain</strong>. These map
+        one-to-one — texture your Diffuse Color exactly the way you'd texture
+        Base Color.
+      </p>
+
+      <h3>Diffuse Roughness</h3>
+      <p>
+        Both shaders have a Diffuse Roughness control that exists for one
+        reason: perfectly smooth diffuse math (called "Lambertian") makes every
+        matte surface look faintly like painted plastic. Raising Diffuse
+        Roughness breaks that up.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Chalk versus a freshly painted matte wall. Both are "not shiny," but
+          chalk scatters light more unevenly because its surface is powdery at a
+          microscopic level. Diffuse Roughness dials a material from "painted
+          wall" (0) toward "chalk or dry clay" (higher values).
+        </p>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          This one behaves the same way in both shaders — if you had a value
+          you liked in AiStandardSurface, it's a safe starting point in
+          PxrSurface too.
+        </p>
+      </div>
+    </section>
+
+    <section id="specular">
+      <p class="section-kicker">Layer 2 — the big one</p>
+      <h2>Specular &amp; "metalness"</h2>
+      <p>
+        This is where the two shaders genuinely diverge, so it's worth slowing
+        down here. Specular is the shiny, mirror-like reflection on top of the
+        diffuse color — think of the diffuse layer as the "paint" and specular
+        as the "varnish" sitting on top of it.
+      </p>
+
+      <h3>Specular Roughness</h3>
+      <p>
+        Works the same way in both shaders: it controls how blurry the
+        reflection is.
+      </p>
+      <div class="slider-viz">
+        <div class="slider-viz__bar" aria-hidden="true"></div>
+        <div class="slider-viz__labels">
+          <span>0.0 — mirror-sharp reflection</span>
+          <span>1.0 — soft, diffuse-like reflection</span>
+        </div>
+      </div>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A mirror versus a smudged mirror. At 0, you get a clean reflection of
+          your environment. As roughness rises, that reflection smears out —
+          like breathing fog onto glass — until at 1.0 it barely looks
+          reflective at all.
+        </p>
+      </div>
+
+      <h3>Why there's no "Metalness" slider</h3>
+      <p>
+        In AiStandardSurface, flipping Metalness toward 1 does two things at
+        once: it tints the specular reflection using Base Color, and it fades
+        out the diffuse layer, since real metals don't have a diffuse
+        component — all the light bounces off the surface, none of it
+        scatters underneath.
+      </p>
+      <p>
+        PxrSurface doesn't bundle that behavior into one slider. Instead, you
+        get direct control over the two colors that make up a Fresnel
+        reflection:
+      </p>
+      <ul>
+        <li><strong>Specular Face Color</strong> — the reflection color when you're looking straight at the surface.</li>
+        <li><strong>Specular Edge Color</strong> — the reflection color at a grazing, glancing angle.</li>
+      </ul>
+      <p>
+        Non-metals (skin, plastic, wood) reflect a dim, colorless highlight
+        head-on and a brighter, colorless highlight at grazing angles — so
+        Face Color stays low and neutral, and Edge Color stays near white.
+        Metals (gold, copper, chrome) reflect a <em>tinted</em> highlight even
+        head-on — so for a metal, you push both Face Color and Edge Color
+        toward the metal's actual color (e.g. warm yellow-gold for gold), and
+        you manually turn Diffuse Gain down toward 0, since a metal shouldn't
+        have a visible diffuse layer underneath.
+      </p>
+
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          There is no one-click "make this metal" switch. Recreating a metal
+          look means: tint <strong>both</strong> Specular Face and Edge Color to
+          the metal's color, and manually zero out (or nearly zero out)
+          Diffuse Gain. Skipping the second step is the most common reason a
+          converted metal material looks "washed out" or plasticky in
+          PxrSurface.
+        </p>
+      </div>
+
+      <h3>Fresnel Mode: Artistic vs. Physical</h3>
+      <p>
+        PxrSurface gives you a choice for how the specular color blends
+        between Face and Edge:
+      </p>
+      <ul>
+        <li>
+          <strong>Artistic mode</strong> — you paint Face Color and Edge Color
+          directly, with a Fresnel Exponent to control how quickly the surface
+          transitions between them. This is the closest feeling to how you
+          already think in Arnold: pick colors by eye, adjust until it reads
+          right.
+        </li>
+        <li>
+          <strong>Physical mode</strong> — instead of hand-picking colors, you
+          drive the reflection from real-world <strong>Specular IOR</strong>
+          (index of refraction) and, for metals, an Extinction Coefficient.
+          This is more physically accurate but less immediately intuitive —
+          you're dialling in numbers from real material data rather than
+          eyeballing a color.
+        </li>
+      </ul>
+      <p class="muted">
+        For most lookdev work, Artistic mode is the easier starting point if
+        you're used to picking colors by eye in Arnold.
+      </p>
+    </section>
+
+    <section id="clearcoat">
+      <p class="section-kicker">Layer 3</p>
+      <h2>Clearcoat</h2>
+      <p>
+        <strong>Coat</strong> in Arnold becomes <strong>Clearcoat</strong> in
+        PxrSurface. Both represent a thin, glassy top layer sitting over
+        everything else — car paint lacquer, a screen protector, wet varnish
+        on wood.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A layer of glass laid over the material. It adds its own small,
+          sharp highlight on top of whatever's underneath, independent of the
+          base specular layer, which is why car paint reads as "shiny in two
+          different ways at once."
+        </p>
+      </div>
+      <p>
+        Clearcoat gets its own Face Color, Edge Color, Roughness, and IOR,
+        completely separate from the main Specular layer below it — so you can
+        make the coat sharp and clear while the base metal flake underneath is
+        rougher, exactly like the Coat layer in AiStandardSurface.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Behavior and intent match closely — this is one of the more
+          predictable translations. Default IOR in both shaders lands around
+          1.5, a reasonable starting point for most clearcoats.
+        </p>
+      </div>
+    </section>
+
+    <section id="fuzz">
+      <p class="section-kicker">Layer 4</p>
+      <h2>Sheen → Fuzz</h2>
+      <p>
+        Arnold's <strong>Sheen</strong> becomes <strong>Fuzz</strong> in
+        PxrSurface. Both exist for the same reason: cloth, dust, and fine
+        fibers catch light at grazing angles in a soft, velvety way that the
+        main specular layer doesn't capture well.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          The pale glow around the silhouette of a velvet couch or a dusty
+          countertop when it's backlit — light catching countless tiny fibers
+          or dust particles standing up off the surface, rather than one clean
+          reflective surface.
+        </p>
+      </div>
+      <p>
+        Fuzz gives you a Weight, Color, and Roughness, the same conceptual
+        controls as Sheen. The main difference is under the hood: Fuzz reuses
+        a hair-shading model, so its roughness response curve doesn't line up
+        1-to-1 with Sheen's — treat any ported value as a starting point to
+        re-eyeball, not a guaranteed match.
+      </p>
+    </section>
+
+    <section id="subsurface">
+      <p class="section-kicker">Layer 5</p>
+      <h2>Subsurface scattering</h2>
+      <p>
+        Both shaders simulate light entering a surface, bouncing around
+        inside it, and exiting somewhere nearby — the effect that makes skin,
+        wax, marble, and milk look soft and slightly translucent instead of
+        flat.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Shining a flashlight through your fingers. The light doesn't bounce
+          straight off your skin — it goes in, scatters around inside, and
+          comes back out reddened and softened. That's subsurface scattering.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          This is the layer least likely to port over with the same numbers.
+          Arnold's Subsurface uses a Scale + Radius pair that's fairly
+          forgiving to eyeball. PxrSurface's Subsurface parameters are tied
+          more directly to physical scattering distances, so a "Radius" value
+          that looked right in Arnold won't automatically look right here —
+          plan to re-tune this layer by eye against a reference (skin, wax,
+          etc.) rather than porting numbers directly.
+        </p>
+      </div>
+    </section>
+
+    <section id="glow">
+      <p class="section-kicker">Layer 6</p>
+      <h2>Emission → Glow</h2>
+      <p>
+        Arnold's <strong>Emission</strong> / <strong>Emission Color</strong>
+        becomes PxrSurface's <strong>Glow</strong> — a straightforward rename.
+        Both make a surface appear to give off its own light: screens, lava,
+        lit signage, embers.
+      </p>
+      <p class="muted">
+        Worth remembering for both shaders: this makes the surface <em>look</em>
+        bright, but it doesn't efficiently light the rest of the scene the way
+        an actual light source does. Treat it as a texture/look effect, not a
+        lighting tool.
+      </p>
+    </section>
+
+    <section id="transmission">
+      <p class="section-kicker">Layer 7 — advanced</p>
+      <h2>Transmission / Glass</h2>
+      <p>
+        Arnold's <strong>Transmission</strong> and PxrSurface's
+        <strong>Glass</strong> both handle see-through materials — actual
+        glass, clear liquid, thin plastic. Most character and hard-surface
+        lookdev never touches this layer, so this guide keeps it brief: if
+        you're building glass or liquid, expect a re-tuning pass rather than a
+        direct value port, for the same reason as Subsurface above — the
+        underlying math isn't parameterized identically.
+      </p>
+    </section>
+
+    <section id="pitfalls">
+      <h2>Common pitfalls</h2>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "My metal looks like grey plastic"</div>
+        <p>
+          You tinted Specular Face/Edge Color but forgot to lower Diffuse
+          Gain. A visible diffuse layer under a metal reflection is almost
+          always the culprit — see the Specular section above.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "Skin/wax looks too solid, not soft"</div>
+        <p>
+          Subsurface values ported directly from Arnold's Radius/Scale rarely
+          hold up. Re-tune by eye rather than trusting the numbers.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The clearcoat isn't visible"</div>
+        <p>
+          Check Clearcoat's own Roughness — it defaults to a very sharp,
+          low-roughness look, so on a rough base material it can read as
+          barely-there unless the coat itself is kept nearly smooth.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "Colors look flatter than in Arnold"</div>
+        <p>
+          Double-check you're comparing Face Color (head-on) against Face
+          Color, not against Arnold's single Specular Color — PxrSurface's
+          two-color Fresnel model means a like-for-like comparison needs both
+          Face and Edge Color set intentionally, not just one.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--soon" style="margin-top: 3rem;">
+      <span class="badge">Coming soon</span>
+      <h3>Lama vs PxrSurface</h3>
+      <p class="muted">
+        A follow-up guide comparing Arnold's layered material (Lama) system
+        against PxrSurface is planned as a second pass. Not published yet.
+      </p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  Written for lookdev and lighting artists switching render engines. No prior
+  shader-writing knowledge assumed. Parameter names reflect current
+  RenderMan and Arnold documentation at time of writing — always sanity check
+  against the version installed in your pipeline.
+</footer>
+
+</body>
+</html>
