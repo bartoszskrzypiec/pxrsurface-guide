@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subsurface Scattering Guide</title>
+<meta name="description" content="A plain-language guide to subsurface scattering for artists moving from Arnold's AiStandardSurface to RenderMan's PxrSurface: mean free path, Radius vs DMFP, Unit Length, and the scattering models.">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<nav class="topnav">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="sss.html" class="active">Subsurface scattering</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker">Deep dive</p>
+  <h1>Subsurface scattering</h1>
+  <p class="lead">
+    Every other layer in a surface shader takes a weight between 0 and 1.
+    Subsurface takes <em>distances</em> — which makes it the one layer where the
+    scale your scene is modelled at changes the result. That, plus a set of
+    parameter names that actively mislead, is why subsurface is the layer people
+    lose the most time on when they change renderer.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2>On this page</h2>
+    <ol>
+      <li><a href="#what-sss-is">What's actually happening</a></li>
+      <li><a href="#mean-free-path">Mean free path</a></li>
+      <li><a href="#radius-vs-dmfp">Radius vs DMFP</a></li>
+      <li><a href="#unit-length">The multiplier Arnold doesn't have</a></li>
+      <li><a href="#color-channels">Why red bleeds furthest</a></li>
+      <li><a href="#models">Choosing a model</a></li>
+      <li><a href="#mmfp">Multiple Mean Free Paths</a></li>
+      <li><a href="#single-scatter">Single Scatter is separate</a></li>
+      <li><a href="#energy">Subsurface and the diffuse underneath</a></li>
+      <li><a href="#advanced">The rest of the panel</a></li>
+      <li><a href="#recipe">Conversion recipe</a></li>
+      <li><a href="#pitfalls">Common pitfalls</a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="what-sss-is">
+      <h2>What's actually happening</h2>
+      <p>
+        On most materials, light arrives at the surface and leaves from the same
+        spot — it either bounces off the top or scatters back out of the paint
+        immediately. Subsurface materials don't do that. Light goes
+        <em>in</em>, ricochets around underneath for a while, and comes back out
+        somewhere else entirely.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Shining a flashlight through your fingers. The glow doesn't appear
+          where the beam hits — it appears all around, spread out and turned
+          red, because the light travelled sideways through the flesh before it
+          found a way out.
+        </p>
+      </div>
+      <p>
+        That "travelled sideways" is the whole thing. To describe it, the shader
+        can't just ask <em>how much</em> — it has to ask <em>how far</em>. And
+        the moment a parameter is a real distance rather than a 0–1 weight, it
+        has to be measured against something.
+      </p>
+      <div class="callout">
+        <div class="callout__title">↔ Why this layer is different</div>
+        <p>
+          Roughness, gains, weights — none of them care how big your model is. A
+          roughness of 0.2 is 0.2 whether your head is 20 units tall or 200.
+          Subsurface is the exception: it is the only layer in either shader
+          where <strong>the scale you modelled at changes the render</strong>.
+          Almost every "why does my skin look nothing like it did in Arnold"
+          story traces back to that one sentence.
+        </p>
+      </div>
+    </section>
+
+    <section id="mean-free-path">
+      <h2>Mean free path</h2>
+      <p>
+        Both shaders describe the interior of a material with the same physical
+        idea, so it's worth getting straight before touching any parameter.
+      </p>
+      <p>
+        The <strong>mean free path</strong> is the average distance light
+        travels inside the material before it hits something and changes
+        direction. Short mean free path means light gets knocked about
+        constantly and doesn't get far — milk, ceramic, thick paint. Long mean
+        free path means light travels a long way between collisions — wax, jade,
+        a thin slice of marble.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Crossing a room. In an empty corridor you walk a long way before you
+          have to change direction. At a packed party you get a metre before you
+          have to sidestep someone. Same you, same walking — the difference is
+          how densely packed the obstacles are. Mean free path is the average
+          length of one of those stretches.
+        </p>
+      </div>
+      <p>
+        You will also see this written as <strong>DMFP</strong>, which is where
+        PxrSurface's internal parameter name <code>subsurfaceDmfp</code> comes
+        from. In the interface it's labelled
+        <strong>Mean Free Path Distance</strong> — same thing, and that longer
+        label is the more honest one, because it tells you it's a distance.
+      </p>
+      <p class="muted">
+        Everything else in this guide is bookkeeping on top of this one idea:
+        how each shader lets you specify that distance, per colour channel, and
+        in what units.
+      </p>
+    </section>
+
+    <section id="radius-vs-dmfp">
+      <h2>Radius vs DMFP</h2>
+      <p>
+        Here's the good news, which nobody tells you: <strong>the two shaders
+        use exactly the same decomposition.</strong> Both split the scattering
+        distance into a single number multiplied by a colour.
+      </p>
+      <p>
+        You need a colour because red, green and blue don't travel the same
+        distance through flesh — more on that below. And you want a single
+        number on top so you can scale all three at once without re-picking the
+        colour. Both Arnold and PxrSurface landed on that design. They just
+        named the two halves in a way that makes them look unrelated.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>AiStandardSurface</th>
+              <th>PxrSurface</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>The single number (a distance)</td>
+              <td class="col-arnold">Subsurface <strong>Scale</strong></td>
+              <td class="col-pxr">Mean Free Path <strong>Distance</strong> <code>subsurfaceDmfp</code></td>
+            </tr>
+            <tr>
+              <td>The per-channel colour</td>
+              <td class="col-arnold">Subsurface <strong>Radius</strong></td>
+              <td class="col-pxr">Mean Free Path <strong>Color</strong> <code>subsurfaceDmfpColor</code></td>
+            </tr>
+            <tr>
+              <td>Unit scale correction</td>
+              <td class="col-arnold"><em>none</em></td>
+              <td class="col-pxr"><strong>Unit Length</strong> <code>unitLength</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        So the mapping is a straight swap — and it's the one Pixar's own
+        conversion shader performs:
+        <strong>Radius</strong> → <strong>Mean Free Path Color</strong>, and
+        <strong>Scale</strong> → <strong>Mean Free Path Distance</strong>.
+      </p>
+
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Read that mapping twice, because the names fight it.
+          <strong>"Radius" sounds like a distance and is actually the
+          colour.</strong>
+          <strong>"Scale" sounds like a multiplier and is actually the
+          distance.</strong> Both instincts are wrong, and they're wrong in
+          opposite directions, so guessing gets you a material that is both the
+          wrong colour and the wrong depth. If a converted subsurface material
+          is badly off in a way you can't tune out, check these two fields
+          haven't been swapped before you change anything else.
+        </p>
+      </div>
+
+      <p class="muted">
+        One consequence worth noting: because Radius is a colour, an Arnold
+        Radius of <code>(1, 1, 1)</code> is not "radius one" in any meaningful
+        unit — it's "all three channels travel the same distance, and Scale
+        decides what that distance is."
+      </p>
+    </section>
+
+    <section id="unit-length">
+      <h2>The multiplier Arnold doesn't have</h2>
+      <p>
+        PxrSurface has a third term in the chain, and it lives somewhere you
+        won't find by scrolling the Subsurface section: <strong>Unit Length</strong>,
+        over on the <strong>Scattering Globals</strong> page. It defaults to
+        <strong>0.1</strong>.
+      </p>
+      <p>The full picture is therefore:</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>How the distance is built</th>
+              <th>With defaults</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-arnold">AiStandardSurface</td>
+              <td>Scale × Radius</td>
+              <td>1 × (1, 1, 1) = <strong>(1.0, 1.0, 1.0)</strong></td>
+            </tr>
+            <tr>
+              <td class="col-pxr">PxrSurface</td>
+              <td>MFP Distance × MFP Color × Unit Length</td>
+              <td>10 × (0.851, 0.557, 0.395) × 0.1 = <strong>(0.851, 0.557, 0.395)</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Which is the point: <strong>the two shaders ship with almost the same
+        effective scattering distance.</strong> PxrSurface's Mean Free Path
+        Distance of 10 looks alarmingly large next to Arnold's Scale of 1, but
+        Unit Length quietly divides it back down by ten.
+      </p>
+      <div class="callout">
+        <div class="callout__title">A correction to an earlier version of these guides</div>
+        <p>
+          An earlier version of the <a href="guide.html#subsurface">transition
+          guide</a> said that copying your Radius across and leaving the
+          distance at 10 meant "light travelling ten times further than it did
+          in Arnold." That was wrong — it ignored Unit Length, which cancels the
+          factor of ten. The real trap is the next paragraph, and it's a bigger
+          one.
+        </p>
+      </div>
+
+      <h3>What Unit Length is actually for</h3>
+      <p>
+        Unit Length exists because Mean Free Path numbers are conventionally
+        quoted in <strong>millimetres</strong> — that's how measured scattering
+        data for skin, marble and milk is published. But scenes aren't modelled
+        in millimetres. RenderMan's default of 0.1 assumes your scene is in
+        <strong>centimetres</strong>, so that a millimetre-flavoured MFP value
+        lands correctly in a centimetre world.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A recipe written in grams being cooked in a kitchen that only has cup
+          measures. The recipe isn't wrong and the kitchen isn't wrong, but
+          something has to do the conversion — and if nothing does, you don't
+          get a slightly-off cake, you get a completely different one.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Arnold has no equivalent parameter. Its Radius and Scale are simply in
+          scene units, whatever those happen to be, and it makes no assumption
+          about what you modelled in. So the very first thing to check when
+          converting a subsurface material is not a subsurface parameter at all
+          — it's <strong>what scale your scene is modelled at</strong>, and
+          whether Unit Length matches it. Model in metres and leave Unit Length
+          at 0.1 and your scattering is out by a factor of 100. No amount of
+          adjusting Mean Free Path Color will fix that, which is exactly why
+          people spend an afternoon on it.
+        </p>
+      </div>
+      <p class="muted">
+        Unit Length also applies to the Single Scatter lobe, not just Subsurface
+        — it's on the Scattering Globals page because it governs both.
+      </p>
+    </section>
+
+    <section id="color-channels">
+      <h2>Why red bleeds furthest</h2>
+      <p>
+        Look at the two shaders' default colours side by side and one of them is
+        clearly opinionated:
+      </p>
+      <ul>
+        <li>
+          Arnold's <strong>Subsurface Radius</strong> defaults to
+          <strong>(1, 1, 1)</strong> — perfectly neutral. All three channels
+          travel the same distance.
+        </li>
+        <li>
+          PxrSurface's <strong>Mean Free Path Color</strong> defaults to
+          <strong>(0.851, 0.557, 0.395)</strong> — red travels furthest, then
+          green, then blue, roughly two-to-one from red to blue.
+        </li>
+      </ul>
+      <p>
+        That PxrSurface default isn't arbitrary. It's approximately skin. Blood
+        and tissue absorb blue and green light quickly while letting red through,
+        so red light penetrates deepest and travels furthest before it comes
+        back out. Every soft red glow you've seen at the edge of a backlit ear
+        is that ratio.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Putting a fingertip over a torch. The light that makes it through is
+          red — not because the torch is red, but because red is the only part
+          of it that survived the trip. The blue and green were stopped much
+          earlier.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          This is why a fresh PxrSurface subsurface lobe already reads as flesh
+          while a fresh Arnold one reads as neutral wax. Neither is a better
+          default — they start from different assumptions. Practically: if your
+          Arnold material had a carefully authored Radius colour, port it and
+          you'll <em>overwrite</em> PxrSurface's skin-shaped default, which is
+          correct. But if your Arnold material left Radius at neutral because
+          the look came from elsewhere, copying <code>(1, 1, 1)</code> across
+          will strip the reddening out and leave you wondering where the warmth
+          went.
+        </p>
+      </div>
+    </section>
+
+    <section id="models">
+      <h2>Choosing a model</h2>
+      <p>
+        Both shaders offer more than one way to compute all this. Arnold gives
+        you three. PxrSurface gives you six. The defaults are not equivalent,
+        and that mismatch does more damage than any single parameter.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>PxrSurface — Subsurface Model</th>
+              <th>What it computes</th>
+              <th>Closest Arnold type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-pxr">Jensen Dipole <em>(default)</em></td>
+              <td>Diffusion only — the result of many bounces, approximated. Oldest and fastest.</td>
+              <td class="col-arnold">diffusion</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">DEon Better Dipole</td>
+              <td>Diffusion only, with a better-behaved falloff than Jensen.</td>
+              <td class="col-arnold">diffusion</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Burley Normalized</td>
+              <td>Diffusion <strong>and</strong> single scattering.</td>
+              <td class="col-arnold">between diffusion and randomwalk</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Multiple Mean Free Paths</td>
+              <td>Three separate scattering ranges at once — see below.</td>
+              <td class="col-arnold"><em>no equivalent</em></td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Exponential Path Traced</td>
+              <td>Actually traces light through the interior. Accounts for single and zero scatter events too.</td>
+              <td class="col-arnold">randomwalk</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Non-Exponential Path Traced</td>
+              <td>As above, with a different distance distribution — often better on dense, detailed media.</td>
+              <td class="col-arnold">randomwalk / randomwalk_v2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        The gap that matters: <strong>Arnold defaults to
+        <code>randomwalk</code></strong>, which brute-force traces the interior
+        and has been Arnold's default for years — so almost every Arnold
+        subsurface material you'll ever be handed was authored with it.
+        <strong>PxrSurface defaults to Jensen Dipole</strong>, which is the
+        oldest and most approximate of the six.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          A weather forecast versus standing outside. The forecast is fast and
+          usually close enough. But ask it about one specific gust in one
+          specific street and the approximation has nothing to say — you had to
+          be there. Dipole models are the forecast; path traced models stand
+          outside.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          If your Arnold material used <code>randomwalk</code>, the honest
+          equivalent is one of the <strong>Path Traced</strong> options, not the
+          Jensen Dipole you'll find switched on when you open the shader. The
+          approximations hold up on thick, rounded forms and fall apart exactly
+          where you care most — thin geometry like ears, nostrils, fingers and
+          eyelids. That's the usual reason converted skin looks fine on the
+          cheek and rubbery at the edges.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">⚠ One caveat about the distance</div>
+        <p>
+          Mean Free Path Distance is designed for the dipole models. Once you're
+          in a Path Traced mode, RenderMan's own documentation advises against
+          leaning on it — you drive the look from Subsurface Color and Mean Free
+          Path Color instead. So switching model isn't just a quality dial; it
+          changes which parameters you should be reaching for.
+        </p>
+      </div>
+    </section>
+
+    <section id="mmfp">
+      <h2>Multiple Mean Free Paths</h2>
+      <p>
+        This is the one PxrSurface mode with nothing resembling it in
+        AiStandardSurface, and it's worth knowing about even if you never switch
+        to it, because it explains a set of parameters that otherwise look like
+        clutter.
+      </p>
+      <p>
+        Every other model gives you <em>one</em> mean free path, tinted per
+        colour channel. Multiple Mean Free Paths gives you <strong>three
+        complete sets</strong> — short, medium and long range — each with its own
+        gain, its own colour and its own distance.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Range</th>
+              <th>Gain</th>
+              <th>Color</th>
+              <th>Distance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-pxr">Short</td>
+              <td>Short Gain — 0</td>
+              <td>(0.9, 0.9, 0.9) — near white</td>
+              <td>5</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Medium</td>
+              <td>Gain — 0</td>
+              <td>(0.830, 0.791, 0.753) — warm off-white</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Long</td>
+              <td>Long Gain — 0</td>
+              <td><strong>(0.8, 0, 0) — pure red</strong></td>
+              <td>20</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Read those defaults and the intent is unmistakable: a pale, tight
+        scatter close to the surface; a warm mid-range one; and a deep red one
+        travelling four times further. It's the classic three-layer skin model,
+        pre-loaded.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Skin is not one substance. There's a thin, pale outer layer that
+          scatters light barely at all, a thicker warm layer below it, and blood
+          deeper still. Light that only just dips in comes back nearly white;
+          light that goes deep comes back red. One mean free path has to average
+          all of that into a single answer. Three lets you say it properly.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Two things change when you switch to this mode, and both surprise
+          people. <strong>Mean Free Path Color is ignored entirely</strong> —
+          the per-range colours replace it. And <strong>Subsurface Color becomes
+          the medium-range colour</strong> specifically, rather than the colour
+          of the whole lobe. So a value you ported from Arnold's Subsurface
+          Color is now doing a narrower job than it was, and your ported Radius
+          is doing no job at all.
+        </p>
+      </div>
+      <p class="muted">
+        All three gains default to 0, so the mode does nothing until you feed
+        it. That's a reasonable way to explore it: bring up Long Gain on its own
+        against a backlit ear and you'll see immediately what the red channel is
+        for.
+      </p>
+    </section>
+
+    <section id="single-scatter">
+      <h2>Single Scatter is separate</h2>
+      <p>
+        In PxrSurface, <strong>Single Scatter is its own lobe on its own page</strong>,
+        sitting next to Subsurface rather than inside it. It has a separate Gain,
+        Color, Mean Free Path, Mean Free Path Color, its own refractive index
+        (1.3), and a Blur control.
+      </p>
+      <p>
+        Single scattering is light that goes in, bounces <em>once</em>, and comes
+        straight back out. That's what produces the crisp, directional glow
+        through something thin and dense held up to a light — a hand over a
+        torch, a slice of jade, wax with a candle behind it. Multi-bounce
+        diffusion produces the soft even bloom; single scatter produces the
+        structure inside it.
+      </p>
+      <div class="analogy">
+        <p class="section-kicker">Think of it as</p>
+        <p>
+          Fog versus mist. Thick fog scatters headlights into a uniform glow —
+          you can't tell where the beam points. Thin mist still shows you the
+          beam. Diffusion is the fog; single scatter is the visible beam inside
+          it.
+        </p>
+      </div>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          Arnold doesn't split these out. <code>randomwalk</code> traces the
+          interior properly and so accounts for single-bounce light as part of
+          the same computation — there's no separate lobe to enable and nothing
+          to forget. Which means when you convert, you may need
+          <strong>both</strong> PxrSurface lobes to get back what one Arnold
+          slider was giving you.
+        </p>
+      </div>
+      <p>Whether you need it depends on the model you picked:</p>
+      <ul>
+        <li>
+          <strong>Jensen or dEon dipole</strong> — diffusion only. If your Arnold
+          material had visible single-scatter character, you have to add the
+          Single Scatter lobe yourself.
+        </li>
+        <li>
+          <strong>Burley Normalized</strong> — already covers single scattering.
+        </li>
+        <li>
+          <strong>Path Traced</strong> — already accounts for single and zero
+          scatter events, same as <code>randomwalk</code>. Adding the separate
+          lobe on top risks double-counting.
+        </li>
+      </ul>
+      <p class="muted">
+        Its Mean Free Path is built the same way as Subsurface's — scalar ×
+        colour × the same shared Unit Length — so everything from the
+        <a href="#unit-length">Unit Length</a> section applies here unchanged.
+      </p>
+    </section>
+
+    <section id="energy">
+      <h2>Subsurface and the diffuse underneath</h2>
+      <p>
+        Subsurface scattering <em>is</em> the surface's response to light. If
+        the material is scattering light through its interior, that light is not
+        also available to the ordinary diffuse layer — so as subsurface comes
+        up, diffuse should come down.
+      </p>
+      <p>
+        Arnold does that for you. PxrSurface does not. It's the same story told
+        at more length in the transition guide's
+        <a href="guide.html#energy">who balances the layers</a> section, and it
+        shows up here as two specific adjustments that Pixar's own conversion
+        shader has to make by hand:
+      </p>
+      <ul>
+        <li><strong>Diffuse Gain</strong> gets multiplied by <code>(1 − subsurface)</code>.</li>
+        <li><strong>Subsurface Gain</strong> gets multiplied by <code>(1 − sheen)</code>.</li>
+      </ul>
+      <div class="callout">
+        <div class="callout__title">↔ Coming from Arnold</div>
+        <p>
+          So if you set Subsurface Gain to 1 and leave Diffuse Gain at its
+          default of 1, you have a material lit twice — and it will read as
+          washed out and strangely flat rather than obviously too bright, which
+          makes it hard to diagnose. Take Diffuse Gain down as you bring
+          Subsurface Gain up. And if the material also has Fuzz on it, that
+          takes a bite out of the subsurface budget in turn.
+        </p>
+      </div>
+    </section>
+
+    <section id="advanced">
+      <p class="section-kicker">You probably don't need these</p>
+      <h2>The rest of the panel</h2>
+      <p>
+        PxrSurface has roughly forty subsurface-related parameters against
+        Arnold's five. Almost none of them are things you'll reach for, but an
+        unexplained control is a distracting one — so here is what the rest of
+        the panel is for, one line each.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Control</th>
+              <th>Default</th>
+              <th>What it's for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-pxr">Directionality</td>
+              <td>0</td>
+              <td>Whether light continues forward through the medium rather than scattering evenly. This <em>does</em> have an Arnold equivalent: <strong>Subsurface Anisotropy</strong>.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Bleed</td>
+              <td>0</td>
+              <td>Pushes light further through the medium while keeping fine detail — a gentler alternative to simply raising Mean Free Path.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Diffuse Blend</td>
+              <td>0</td>
+              <td>Mixes a little plain diffuse into the result. Its stated purpose is fixing dark artefacts on objects with very sharp edges.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Internal reflection index</td>
+              <td>1.4</td>
+              <td>Makes light exit only roughly perpendicular to the surface, reflecting oblique paths back inside. Helps with over-bright curved areas.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Post Tint</td>
+              <td>white</td>
+              <td>A colour multiplier applied after the whole subsurface computation. An art-direction escape hatch, not a physical control.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Diffuse Computation Switch</td>
+              <td>1</td>
+              <td>Falls back to cheap diffuse when the scattering distance is smaller than a pixel. A speed win on distant objects — but wrong for thin backlit ones, and not recommended with either Path Traced model.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Consider Backside</td>
+              <td>on</td>
+              <td>Whether the far side of the object participates. Turning it <em>off</em> makes objects behave as though thicker than they are.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Follow Topology</td>
+              <td>0</td>
+              <td>How strongly surface normals steer the scattering.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Continuation Ray Mode</td>
+              <td>Off</td>
+              <td>How rays handle geometry inside the object: ignore it, jump to the last surface, or collect light at every hit. The last option adds brightness and noise together.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Max Continuation Hits</td>
+              <td>2</td>
+              <td>How many of those internal hits to test.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Resolve Self Intersections</td>
+              <td>off</td>
+              <td>For geometry that overlaps itself — keeps only the outermost surfaces active for scattering.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Double Sided / Transmit Gain</td>
+              <td>off / 0</td>
+              <td>Lets the lobe be lit from both sides, with a separate gain for the light coming through from behind.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Irradiance Tint / Roughness</td>
+              <td>white / 0</td>
+              <td>Adjusts the light <em>before</em> it gets scattered, rather than the result. Shared by Subsurface and Single Scatter.</td>
+            </tr>
+            <tr>
+              <td class="col-pxr">Trace Subset</td>
+              <td>empty</td>
+              <td>Restricts which objects participate in scattering. A pipeline tool for cases like a head and a separate jaw that shouldn't bleed into each other.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="muted">
+        If you're converting a material rather than authoring a new one, leave
+        every one of these alone. None of them has an Arnold counterpart to port
+        from, so touching them means you're no longer converting — you're
+        art-directing, which is fine, but do it after the conversion reads
+        correctly.
+      </p>
+    </section>
+
+    <section id="recipe">
+      <h2>Conversion recipe</h2>
+      <p>
+        Putting the whole page together, in the order that avoids doing work
+        twice. The first step is the one people skip.
+      </p>
+      <ol class="steps">
+        <li>
+          <strong>Check the scale of your scene, and set Unit Length to
+          match.</strong> Not a subsurface parameter, but it multiplies every
+          other number you're about to set. Centimetres means 0.1, the default.
+          Anything else means changing it. Getting this wrong makes every step
+          below unfixable.
+        </li>
+        <li>
+          <strong>Set the model to match what Arnold was using.</strong>
+          <code>randomwalk</code> → one of the <strong>Path Traced</strong>
+          options; <code>diffusion</code> → a dipole. Do this before you type
+          any numbers, because it changes which numbers matter.
+        </li>
+        <li>
+          <strong>Move the two distance fields across, carefully.</strong>
+          Arnold <strong>Radius</strong> → <strong>Mean Free Path Color</strong>.
+          Arnold <strong>Scale</strong> → <strong>Mean Free Path Distance</strong>.
+          If you're now in a Path Traced mode, expect to lean on the colours
+          rather than the distance.
+        </li>
+        <li>
+          <strong>Copy Subsurface Color and Gain.</strong> These are direct
+          swaps and need no thought.
+        </li>
+        <li>
+          <strong>Pay the energy bill.</strong> Bring <strong>Diffuse Gain</strong>
+          down as Subsurface Gain goes up. Nothing does this for you. Skip it
+          and everything after this point is judged against a doubly-lit
+          material.
+        </li>
+        <li>
+          <strong>Now look at it, against reference.</strong> Backlit, with a
+          thin area in frame — an ear, a nostril, a finger. Front-lit subsurface
+          hides every mistake you just made.
+        </li>
+        <li>
+          <strong>Only then consider Single Scatter.</strong> If you're on a
+          dipole model and the material has lost its crisp through-light, add
+          it. If you're on Path Traced or Burley, you almost certainly
+          shouldn't.
+        </li>
+      </ol>
+    </section>
+
+    <section id="pitfalls">
+      <h2>Common pitfalls</h2>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "Subsurface does nothing, or completely floods the object"</div>
+        <p>
+          Check <strong>Unit Length</strong> against the scale your scene is
+          modelled at, before anything else. It's on the Scattering Globals
+          page, it defaults to 0.1 assuming centimetres, and if your scene is in
+          metres you're off by 100×. This is the single most common cause and
+          the hardest to spot, because no subsurface parameter looks wrong.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "Skin looks fine on the cheek and rubbery at the ears"</div>
+        <p>
+          You're still on <strong>Jensen Dipole</strong>, PxrSurface's default,
+          while the Arnold material was authored with <code>randomwalk</code>.
+          Dipole approximations break down precisely on thin geometry. Switch to
+          a <strong>Path Traced</strong> model.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The material is the wrong colour and the wrong depth at once"</div>
+        <p>
+          You've likely swapped the fields. Arnold's <strong>Radius</strong> is
+          the colour and belongs in <strong>Mean Free Path Color</strong>;
+          Arnold's <strong>Scale</strong> is the distance and belongs in
+          <strong>Mean Free Path Distance</strong>. The names invite exactly the
+          opposite guess.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "I'm changing Mean Free Path Color and nothing happens"</div>
+        <p>
+          You're in <strong>Multiple Mean Free Paths</strong> mode, which
+          ignores that parameter entirely and uses the short, medium and long
+          colours instead. Either switch model, or set the per-range colours.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "It looks washed out and flat rather than soft"</div>
+        <p>
+          <strong>Diffuse Gain</strong> is still up. Arnold fades the diffuse
+          layer as subsurface rises; PxrSurface leaves that to you, so the
+          material is being lit twice. Take Diffuse Gain down.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "There are dark patches along sharp edges"</div>
+        <p>
+          A known artefact of the approximation on hard edges, and
+          <strong>Diffuse Blend</strong> exists specifically to fix it — a small
+          amount is usually enough. Worth trying before you rebuild geometry.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ "The through-light is too bright, or too noisy"</div>
+        <p>
+          If you added <strong>Single Scatter</strong> on top of a Path Traced or
+          Burley model, you're counting the same light twice — those models
+          already include single scattering. If you need it, you're on a dipole.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--trailing">
+      <span class="badge">Companion guides</span>
+      <h3>The rest of the shader</h3>
+      <p class="muted">
+        This page goes deep on one layer. The
+        <a href="guide.html">AiStandardSurface → PxrSurface guide</a> covers all
+        of them, parameter by parameter, and
+        <a href="lama.html">PxrSurface vs Lama</a> compares the two ways to
+        build a material in RenderMan.
+      </p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <p>
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p>
+    Parameter names, defaults, enum values and conversion factors on this page
+    were checked against the <strong>PxrSurface</strong> shader definition in
+    RenderMan 27, Pixar's own Standard Surface → PxrSurface conversion shader
+    shipped with RenderMan for Maya, the
+    <strong>Autodesk Standard Surface</strong> specification, and Arnold's own
+    shader metadata queried directly with <code>kick -info</code>. Always sanity
+    check against the versions installed in your pipeline.
+  </p>
+  <p class="muted">Last updated: 27 August 2026.</p>
+</footer>
+
+</body>
+</html>

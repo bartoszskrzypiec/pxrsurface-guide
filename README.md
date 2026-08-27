@@ -14,6 +14,7 @@ background.
 
 - `index.html` — landing page
 - `guide.html` — AiStandardSurface → PxrSurface transition guide
+- `sss.html` — subsurface scattering deep dive (mean free path, Radius vs DMFP, Unit Length)
 - `lama.html` — PxrSurface vs MaterialX Lama comparison guide
 - `assets/css/style.css` — shared styling
 - `assets/img/` — space for comparison renders/screenshots (not yet populated)
@@ -23,6 +24,7 @@ background.
 
 - [x] AiStandardSurface → PxrSurface guide
 - [x] PxrSurface vs Lama comparison guide
+- [x] Subsurface scattering deep dive
 - [ ] Comparison renders in `assets/img/`
 
 ## Sources
@@ -37,6 +39,9 @@ definitions themselves rather than from memory:
   conversion factors come from (for example Fuzz Cone Angle = 32 × Sheen
   Roughness).
 - The [MaterialX Lama node definitions](https://github.com/AcademySoftwareFoundation/MaterialX/tree/main/libraries/bxdf/lama)
+- `kick -info standard_surface.<param>` — Arnold's own shader metadata, queried
+  directly from a local install. This is where the enum values and defaults for
+  `subsurface_type` come from.
 
 Note that MaterialX Lama is a RenderMan/MaterialX system developed at ILM — not
 an Arnold one.

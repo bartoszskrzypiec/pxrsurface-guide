@@ -14,6 +14,7 @@
   <div class="topnav__links">
     <a href="index.html">Home</a>
     <a href="guide.html" class="active">AiStandardSurface → PxrSurface</a>
+    <a href="sss.html">Subsurface scattering</a>
     <a href="lama.html">PxrSurface vs Lama</a>
   </div>
 </nav>
@@ -209,7 +210,7 @@
             <tr>
               <td class="col-arnold">Subsurface Scale</td>
               <td class="col-pxr">Mean Free Path Distance <code>subsurfaceDmfp</code></td>
-              <td>Scale becomes the distance. Defaults differ sharply: 1 vs 10.</td>
+              <td>Scale becomes the distance — then multiplied again by Unit Length, which Arnold has no equivalent for.</td>
             </tr>
             <tr>
               <td class="col-arnold">Subsurface Type</td>
@@ -638,71 +639,40 @@
           comes back out reddened and softened. That's subsurface scattering.
         </p>
       </div>
-      <h3>Radius and Scale become Mean Free Path</h3>
       <p>
-        The parameters do map across, but the names disguise it badly. Arnold's
-        pair is <strong>Subsurface Radius</strong> (a color — how far red,
-        green and blue each travel) and <strong>Subsurface Scale</strong> (a
-        single number multiplying all three). PxrSurface splits the same idea
-        into <strong>Mean Free Path Color</strong> and
-        <strong>Mean Free Path Distance</strong>.
-      </p>
-      <p>
-        So the translation is: <strong>Radius</strong> →
-        <strong>Mean Free Path Color</strong>, and <strong>Scale</strong> →
-        <strong>Mean Free Path Distance</strong>. The thing that trips people
-        up is that Radius sounds like a distance and lands on a color, while
-        Scale sounds like a multiplier and lands on the distance. Get those the
-        wrong way round and nothing will look right no matter how long you
-        tweak.
+        The two parameters that matter most do map across, but the names
+        disguise it badly. Arnold's <strong>Subsurface Radius</strong> is a
+        color and becomes <strong>Mean Free Path Color</strong>; Arnold's
+        <strong>Subsurface Scale</strong> is a distance and becomes
+        <strong>Mean Free Path Distance</strong>. Radius sounds like a distance
+        and isn't; Scale sounds like a multiplier and is the distance. Both
+        instincts are wrong, in opposite directions.
       </p>
       <div class="callout">
         <div class="callout__title">↔ Coming from Arnold</div>
         <p>
-          Watch the defaults. Arnold's Scale sits at <strong>1</strong>;
-          PxrSurface's Mean Free Path Distance sits at <strong>10</strong>. If
-          you copy your Radius across and leave the distance alone, light is
-          travelling ten times further inside the object than it did in Arnold,
-          and your skin turns to wax.
+          Before you touch any of it, check <strong>Unit Length</strong> on the
+          Scattering Globals page. It multiplies every subsurface distance, it
+          defaults to 0.1 on the assumption your scene is modelled in
+          centimetres, and Arnold has no equivalent parameter at all. If your
+          scene is in metres, the whole layer is out by a factor of 100 and no
+          amount of tuning the other fields will fix it.
         </p>
       </div>
-
-      <h3>Choosing a subsurface model</h3>
       <p>
-        Arnold offers two ways of computing this. PxrSurface offers six, under
-        <strong>Subsurface Model</strong>, and defaults to
-        <strong>Jensen Dipole</strong> — the oldest and fastest of them.
+        Subsurface is the layer that differs most between the two shaders — it
+        is the only one measured in real distances rather than 0–1 weights,
+        PxrSurface offers six scattering models against Arnold's three, and
+        Single Scatter is a separate lobe here rather than part of the same
+        computation.
       </p>
-      <ul>
-        <li>
-          <strong>The dipole models</strong> (Jensen, d'Eon Better Dipole)
-          approximate the result of light bouncing around many times inside the
-          object. Fast, and the closest match to Arnold's
-          <strong>diffusion</strong> mode.
-        </li>
-        <li>
-          <strong>Burley Normalized</strong> sits in the middle, covering both
-          the many-bounce diffusion and the single-bounce scattering.
-        </li>
-        <li>
-          <strong>The path traced models</strong> (Exponential and
-          Non-Exponential) actually trace light through the interior. Slower
-          and noisier, but they hold up on thin geometry like ears and fingers
-          where the approximations fall apart. This is the counterpart to
-          Arnold's <strong>randomwalk</strong>.
-        </li>
-      </ul>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
+        <div class="callout__title">→ Full guide</div>
         <p>
-          If your Arnold material used <strong>randomwalk</strong> — which has
-          been the default for years — the honest equivalent is one of the
-          <strong>Path Traced</strong> options, not the Jensen Dipole you'll
-          find switched on when you open the shader. Skipping this step is the
-          usual reason converted skin loses its softness around thin edges.
-          One caveat: Mean Free Path Distance is meant for the dipole models,
-          so once you're in a Path Traced mode you drive the look from
-          Subsurface Color and Mean Free Path Color instead.
+          There's too much here for one section, so it has a page of its own:
+          <a href="sss.html">the subsurface scattering deep dive</a> covers mean
+          free path, Radius vs DMFP, Unit Length, choosing a model, Multiple
+          Mean Free Paths, Single Scatter, and a step-by-step conversion recipe.
         </p>
       </div>
     </section>
