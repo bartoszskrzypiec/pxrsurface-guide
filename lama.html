@@ -1,15 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PxrSurface vs Lama Guide</title>
+<title data-title-pl="PxrSurface kontra Lama — przewodnik">PxrSurface vs Lama Guide</title>
 <meta name="description" content="A plain-language guide for artists choosing between RenderMan's PxrSurface and MaterialX Lama: one big shader versus a graph of small ones.">
 <link rel="stylesheet" href="assets/css/style.css">
+<script>
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
 </head>
 <body>
 
-<nav class="topnav">
+<nav class="topnav topnav--i18n">
   <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
   <div class="topnav__links">
     <a href="index.html">Home</a>
@@ -20,77 +28,107 @@
     <a href="aniso.html">Anisotropy</a>
     <a href="fuzz.html">Fuzz</a>
   </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
 </nav>
 
 <header class="hero">
-  <p class="section-kicker">Comparison guide</p>
+  <p class="section-kicker"><span lang="en">Comparison guide</span><span lang="pl">Przewodnik porównawczy</span></p>
   <h1>PxrSurface vs Lama</h1>
-  <p class="lead">
+  <p class="lead" lang="en">
     Two ways to build a material in the same renderer. PxrSurface hands you one
     node with every layer already in it; MaterialX Lama hands you a box of
     single-purpose parts and lets you assemble the material yourself. This
     guide explains how Lama thinks, what maps onto what, and how to tell which
     one a job actually needs.
   </p>
+  <p class="lead" lang="pl">
+    Dwa sposoby budowania materiału w tym samym rendererze. PxrSurface daje
+    ci jeden węzeł z każdą warstwą już w środku; MaterialX Lama daje ci
+    pudełko jednofunkcyjnych części i pozwala samemu złożyć materiał. Ten
+    przewodnik wyjaśnia, jak myśli Lama, co się na co mapuje, i jak
+    rozpoznać, czego naprawdę wymaga dane zadanie.
+  </p>
 </header>
 
 <div class="guide-layout">
   <aside class="toc">
-    <h2>On this page</h2>
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
     <ol>
-      <li><a href="#what-lama-is">First, what Lama actually is</a></li>
-      <li><a href="#mental-model">The mental model</a></li>
-      <li><a href="#vocabulary">The Lama vocabulary</a></li>
-      <li><a href="#combining">Mix vs Add vs Layer</a></li>
-      <li><a href="#lookup">Lobe → node lookup</a></li>
-      <li><a href="#metals">Metals</a></li>
-      <li><a href="#which">Which one should you use</a></li>
-      <li><a href="#pitfalls">Common pitfalls</a></li>
+      <li><a href="#what-lama-is"><span lang="en">First, what Lama actually is</span><span lang="pl">Najpierw, czym naprawdę jest Lama</span></a></li>
+      <li><a href="#mental-model"><span lang="en">The mental model</span><span lang="pl">Model mentalny</span></a></li>
+      <li><a href="#vocabulary"><span lang="en">The Lama vocabulary</span><span lang="pl">Słownictwo Lamy</span></a></li>
+      <li><a href="#combining"><span lang="en">Mix vs Add vs Layer</span><span lang="pl">Mix kontra Add kontra Layer</span></a></li>
+      <li><a href="#lookup"><span lang="en">Lobe → node lookup</span><span lang="pl">Płat → węzeł, ściąga</span></a></li>
+      <li><a href="#metals"><span lang="en">Metals</span><span lang="pl">Metale</span></a></li>
+      <li><a href="#which"><span lang="en">Which one should you use</span><span lang="pl">Którego użyć</span></a></li>
+      <li><a href="#pitfalls"><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></a></li>
     </ol>
   </aside>
 
   <main class="guide-content">
 
     <section id="what-lama-is">
-      <h2>First, what Lama actually is</h2>
-      <p>
+      <h2><span lang="en">First, what Lama actually is</span><span lang="pl">Najpierw, czym naprawdę jest Lama</span></h2>
+      <p lang="en">
         Worth clearing up before anything else, because the name travels
         further than the facts do: <strong>Lama is not an Arnold feature.</strong>
         It was developed at Industrial Light &amp; Magic, contributed to the
         open <strong>MaterialX</strong> standard, and has shipped inside
         RenderMan since version 24.
       </p>
-      <p>
-        So this guide isn't a comparison between two renderers. It's a
-        comparison between two toolkits that live side by side in the same one,
-        and that you choose between per material. Nothing here requires you to
-        leave RenderMan or change anything about how you render.
+      <p lang="pl">
+        Więc ten przewodnik to nie porównanie dwóch rendererów. To
+        porównanie dwóch zestawów narzędzi, które żyją obok siebie w tym
+        samym rendererze, i między którymi wybierasz per materiał. Nic tutaj
+        nie wymaga opuszczenia RenderMana ani zmiany czegokolwiek w sposobie
+        renderowania.
       </p>
-      <p class="muted">
+      <p class="muted" lang="en">
         Because Lama is a MaterialX standard rather than a RenderMan-only
         shader, the same material description is also understood by other
         MaterialX-aware software — which is part of why studios adopt it.
       </p>
+      <p class="muted" lang="pl">
+        Ponieważ Lama to standard MaterialX, a nie shader wyłącznie dla
+        RenderMana, ten sam opis materiału rozumie też inne oprogramowanie
+        obsługujące MaterialX — co jest częścią powodu, dla którego studia go
+        przyjmują.
+      </p>
     </section>
 
     <section id="mental-model">
-      <h2>The mental model</h2>
-      <p>
+      <h2><span lang="en">The mental model</span><span lang="pl">Model mentalny</span></h2>
+      <p lang="en">
         PxrSurface is one node containing a fixed stack of layers — diffuse,
         specular, clearcoat, fuzz, subsurface, glass, glow — all present all the
         time, most of them switched off. You work by turning on the parts of a
         stack that already exists.
       </p>
-      <p>
+      <p lang="pl">
+        PxrSurface to jeden węzeł zawierający stały stos warstw — diffuse,
+        specular, clearcoat, fuzz, subsurface, glass, glow — wszystkie
+        obecne cały czas, większość wyłączona. Pracujesz, włączając części
+        stosu, który już istnieje.
+      </p>
+      <p lang="en">
         Lama has no stack. It gives you individual materials, each one doing
         exactly one thing, and separate nodes whose only job is to combine two
         materials into one. You build the stack yourself, in whatever shape the
         material actually needs.
       </p>
+      <p lang="pl">
+        Lama nie ma stosu. Daje ci pojedyncze materiały, z których każdy
+        robi dokładnie jedną rzecz, i osobne węzły, których jedynym zadaniem
+        jest połączenie dwóch materiałów w jeden. Sam budujesz stos, w
+        dowolnym kształcie, jakiego materiał naprawdę potrzebuje.
+      </p>
 
       <div class="stack-compare">
         <div class="stack stack--arnold">
-          <div class="stack__title stack__title--arnold">PxrSurface — one node, fixed stack</div>
+          <div class="stack__title stack__title--arnold"><span lang="en">PxrSurface — one node, fixed stack</span><span lang="pl">PxrSurface — jeden węzeł, stały stos</span></div>
           <div class="stack__layers">
             <div class="stack__layer">Clearcoat</div>
             <div class="stack__layer">Iridescence</div>
@@ -103,47 +141,66 @@
           </div>
         </div>
         <div class="stack stack--pxr">
-          <div class="stack__title stack__title--pxr">Lama — a graph you assemble</div>
+          <div class="stack__title stack__title--pxr"><span lang="en">Lama — a graph you assemble</span><span lang="pl">Lama — graf, który sam składasz</span></div>
           <div class="stack__layers">
             <div class="stack__layer">LamaSurface</div>
             <div class="stack__layer">↑ LamaLayer</div>
-            <div class="stack__layer">LamaDielectric (the coat)</div>
-            <div class="stack__layer">↑ over ↑</div>
-            <div class="stack__layer">LamaConductor (the metal)</div>
-            <div class="stack__layer">— and nothing else —</div>
+            <div class="stack__layer">LamaDielectric <span lang="en">(the coat)</span><span lang="pl">(powłoka)</span></div>
+            <div class="stack__layer">↑ <span lang="en">over</span><span lang="pl">nad</span> ↑</div>
+            <div class="stack__layer">LamaConductor <span lang="en">(the metal)</span><span lang="pl">(metal)</span></div>
+            <div class="stack__layer">— <span lang="en">and nothing else</span><span lang="pl">i nic więcej</span> —</div>
           </div>
         </div>
       </div>
 
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           A Swiss Army knife versus a toolbox. The knife has everything in it
           already, always the same tools in the same order, and for most jobs
           that's genuinely faster. The toolbox holds fewer things at once but
           lets you bring exactly what the job needs — and lets you bring two
           screwdrivers when a job needs two.
         </p>
+        <p lang="pl">
+          Scyzoryk szwajcarski kontra skrzynka z narzędziami. Scyzoryk ma
+          już wszystko w środku, zawsze te same narzędzia w tej samej
+          kolejności, i do większości zadań to naprawdę szybsze. Skrzynka
+          trzyma naraz mniej rzeczy, ale pozwala przynieść dokładnie to,
+          czego potrzebuje zadanie — i pozwala przynieść dwa śrubokręty,
+          gdy zadanie potrzebuje dwóch.
+        </p>
       </div>
 
-      <p>
+      <p lang="en">
         That last part is the real difference. PxrSurface has one clearcoat
         because the stack has a slot for one clearcoat. In Lama, "coat over
         metal" is a Layer node, so "coat over metal over primer" is just
         another Layer node wrapped around the first. Nothing has to be
         faked.
       </p>
+      <p lang="pl">
+        Ta ostatnia część to prawdziwa różnica. PxrSurface ma jeden
+        clearcoat, bo stos ma slot na jeden clearcoat. W Lamie „powłoka na
+        metalu" to węzeł Layer, więc „powłoka na metalu na podkładzie" to
+        po prostu kolejny węzeł Layer owinięty wokół pierwszego. Niczego nie
+        trzeba udawać.
+      </p>
     </section>
 
     <section id="vocabulary">
-      <h2>The Lama vocabulary</h2>
-      <p>
+      <h2><span lang="en">The Lama vocabulary</span><span lang="pl">Słownictwo Lamy</span></h2>
+      <p lang="en">
         There are fewer nodes than you'd expect. They split cleanly into three
         groups.
       </p>
+      <p lang="pl">
+        Węzłów jest mniej, niż byś się spodziewał. Dzielą się wyraźnie na
+        trzy grupy.
+      </p>
 
-      <h3>Materials — the things that respond to light</h3>
-      <ul>
+      <h3><span lang="en">Materials — the things that respond to light</span><span lang="pl">Materiały — rzeczy reagujące na światło</span></h3>
+      <ul lang="en">
         <li><strong>LamaDiffuse</strong> — the matte base. Your Diffuse lobe.</li>
         <li><strong>LamaConductor</strong> — metals, and only metals. See below.</li>
         <li><strong>LamaDielectric</strong> — everything non-metal that reflects or refracts: plastic, glass, water, varnish, a clearcoat.</li>
@@ -154,6 +211,17 @@
         <li><strong>LamaEmission</strong> — glow.</li>
         <li><strong>LamaGeneralizedSchlick</strong> — a general-purpose reflection model for when you want direct control rather than a physical description.</li>
       </ul>
+      <ul lang="pl">
+        <li><strong>LamaDiffuse</strong> — matowa baza. Twój płat Diffuse.</li>
+        <li><strong>LamaConductor</strong> — metale, i tylko metale. Patrz niżej.</li>
+        <li><strong>LamaDielectric</strong> — wszystko niemetalowe, co odbija albo załamuje: plastik, szkło, woda, werniks, clearcoat.</li>
+        <li><strong>LamaSSS</strong> — subsurface scattering. <strong>LamaTriColorSSS</strong> to wariant zorientowany na skórę.</li>
+        <li><strong>LamaSheen</strong> — tkanina i kurz. Odpowiednik Fuzz.</li>
+        <li><strong>LamaTranslucent</strong> — światło przechodzące dyfuzyjnie przez cienkie rzeczy: papier, liść, abażur.</li>
+        <li><strong>LamaIridescence</strong> — zmiana koloru cienkiej warstwy.</li>
+        <li><strong>LamaEmission</strong> — glow.</li>
+        <li><strong>LamaGeneralizedSchlick</strong> — ogólny model odbicia, gdy chcesz bezpośredniej kontroli zamiast opisu fizycznego.</li>
+      </ul>
 
       <h3>Operators — the things that combine materials</h3>
       <ul>
@@ -162,86 +230,146 @@
         <li><strong>LamaLayer</strong> — put one material on top of another.</li>
       </ul>
 
-      <h3>The end of the graph</h3>
-      <ul>
+      <h3><span lang="en">The end of the graph</span><span lang="pl">Koniec grafu</span></h3>
+      <ul lang="en">
         <li><strong>LamaSurface</strong> — where the finished material plugs in, the way PxrSurface plugs into a shading group.</li>
+      </ul>
+      <ul lang="pl">
+        <li><strong>LamaSurface</strong> — tu podłącza się gotowy materiał, tak jak PxrSurface podłącza się do shading group.</li>
       </ul>
 
       <div class="callout">
-        <div class="callout__title">↔ Coming from PxrSurface</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from PxrSurface</span><span lang="pl">Przesiadka z PxrSurface</span></div>
+        <p lang="en">
           Notice what isn't there: no gains, no lobe checkboxes, no "off by
           default." A Lama node that exists in your graph is contributing. You
           remove a lobe by deleting a node, not by zeroing a value. This makes
           Lama graphs easier to read at a glance — what you see is what the
           material does.
         </p>
+        <p lang="pl">
+          Zwróć uwagę, czego tu nie ma: żadnych gainów, żadnych checkboxów
+          płata, żadnego „domyślnie wyłączone". Węzeł Lama, który istnieje w
+          twoim grafie, ma wpływ. Usuwasz płat, usuwając węzeł, nie zerując
+          wartość. Dzięki temu grafy Lamy łatwiej czyta się na pierwszy rzut
+          oka — to, co widzisz, jest tym, co robi materiał.
+        </p>
       </div>
     </section>
 
     <section id="combining">
-      <h2>Mix vs Add vs Layer</h2>
-      <p>
+      <h2><span lang="en">Mix vs Add vs Layer</span><span lang="pl">Mix kontra Add kontra Layer</span></h2>
+      <p lang="en">
         Three operators that all take two materials and return one. Choosing
         the wrong one is the most common way a Lama material goes wrong, and
         the difference is genuinely simple once stated.
       </p>
+      <p lang="pl">
+        Trzy operatory, które biorą dwa materiały i zwracają jeden. Wybór
+        złego to najczęstszy sposób, w jaki materiał Lama idzie źle, a
+        różnica jest naprawdę prosta, gdy się ją wypowie.
+      </p>
 
-      <h3>LamaMix — two materials in different places</h3>
-      <p>
+      <h3><span lang="en">LamaMix — two materials in different places</span><span lang="pl">LamaMix — dwa materiały w różnych miejscach</span></h3>
+      <p lang="en">
         A blend, controlled by a mask. At 0 you get the first material, at 1
         you get the second, and in between you get a weighted blend. Feed it a
         texture and it becomes "material 2 wherever the mask is white."
       </p>
-      <p>
+      <p lang="pl">
+        Blend sterowany maską. Przy 0 dostajesz pierwszy materiał, przy 1
+        drugi, a pomiędzy ważony blend. Podaj mu teksturę, a stanie się
+        „materiał 2 wszędzie tam, gdzie maska jest biała".
+      </p>
+      <p lang="en">
         This is the one for materials that occupy <em>different parts of the
         surface</em>: rust patches on painted steel, mud spattered on a boot,
         a label on a bottle. The two materials never coexist at the same point.
       </p>
+      <p lang="pl">
+        To ten operator dla materiałów zajmujących <em>różne części
+        powierzchni</em>: plamy rdzy na malowanej stali, błoto rozchlapane na
+        bucie, etykieta na butelce. Oba materiały nigdy nie współistnieją w
+        tym samym punkcie.
+      </p>
 
-      <h3>LamaLayer — one material on top of another</h3>
-      <p>
+      <h3><span lang="en">LamaLayer — one material on top of another</span><span lang="pl">LamaLayer — jeden materiał na wierzchu drugiego</span></h3>
+      <p lang="en">
         A coating. The top material sits over the base, and light that isn't
         reflected by the top passes through to the base underneath — which is
         what actually happens physically when you varnish a piece of wood.
       </p>
+      <p lang="pl">
+        Powłoka. Górny materiał siedzi nad bazą, a światło, które nie
+        odbiło się od góry, przechodzi do bazy pod spodem — dokładnie to,
+        co fizycznie się dzieje, gdy lakierujesz kawałek drewna.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           Laminating a photograph. The plastic goes over the whole picture, not
           in patches. It adds its own sheen, and you still see the photograph
           through it, slightly changed. Both things are present at every point
           on the surface.
         </p>
+        <p lang="pl">
+          Laminowanie zdjęcia. Plastik idzie na całe zdjęcie, nie łatami.
+          Dodaje własny połysk, a ty wciąż widzisz przez niego zdjęcie, lekko
+          zmienione. Obie rzeczy są obecne w każdym punkcie powierzchni.
+        </p>
       </div>
-      <p>
+      <p lang="en">
         LamaLayer has a <strong>Top Thickness</strong> input, which is what
         makes it more than a fancy blend: it tells the renderer how far light
         travels through the top slab, so a coat with absorption in it tints
         what's underneath by the right amount. A thick tinted lacquer and a thin
         one behave differently, correctly, for free.
       </p>
-      <p class="muted">
+      <p lang="pl">
+        LamaLayer ma wejście <strong>Top Thickness</strong>, i to ono czyni
+        go czymś więcej niż wymyślnym blendem: mówi rendererowi, jak daleko
+        światło podróżuje przez górną warstwę, więc powłoka z absorpcją
+        barwi to, co pod spodem, o właściwą ilość. Gruby zabarwiony lakier i
+        cienki zachowują się różnie, poprawnie, za darmo.
+      </p>
+      <p class="muted" lang="en">
         LamaLayer is the node that makes Lama worth using. Layer a dielectric
         over a conductor and you have physically-correct car paint — the coat
         taking its share of the light first, the metal getting what's left.
       </p>
+      <p class="muted" lang="pl">
+        LamaLayer to węzeł, który sprawia, że Lama jest warta używania.
+        Nałóż dielektryk na przewodnik, a masz fizycznie poprawny lakier
+        samochodowy — powłoka bierze swój udział światła najpierw, metal
+        dostaje to, co zostało.
+      </p>
 
-      <h3>LamaAdd — two responses at the same point</h3>
-      <p>
+      <h3><span lang="en">LamaAdd — two responses at the same point</span><span lang="pl">LamaAdd — dwie odpowiedzi w tym samym punkcie</span></h3>
+      <p lang="en">
         A straight sum, with a weight for each side. Both materials contribute
         fully and independently.
       </p>
-      <p>
+      <p lang="pl">
+        Prosta suma, z wagą dla każdej strony. Oba materiały wnoszą swój
+        wkład w pełni i niezależnie.
+      </p>
+      <p lang="en">
         This is the one to be careful with. Add is how you'd combine two
         specular responses that genuinely coexist — but because it's a plain
         sum, nothing stops the total exceeding the light that arrived. Two
         materials at full weight added together reflect twice as much light as
         the surface received.
       </p>
+      <p lang="pl">
+        Z tym trzeba uważać. Add to sposób łączenia dwóch odpowiedzi
+        specular, które naprawdę współistnieją — ale skoro to zwykła suma,
+        nic nie powstrzymuje sumy przed przekroczeniem światła, które
+        przyszło. Dwa materiały o pełnej wadze zsumowane razem odbijają
+        dwa razy więcej światła, niż powierzchnia otrzymała.
+      </p>
       <div class="callout">
-        <div class="callout__title">↔ Coming from PxrSurface</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from PxrSurface</span><span lang="pl">Przesiadka z PxrSurface</span></div>
+        <p lang="en">
           If you read the "who balances the layers" section of the
           <a href="guide.html#energy">PxrSurface guide</a>, this is the same
           trap in a new shape. Lama gives you the honest tool for coatings
@@ -250,50 +378,64 @@
           <strong>LamaAdd</strong> — Layer conserves energy for you, Add does
           not.
         </p>
+        <p lang="pl">
+          Jeśli czytałeś sekcję „kto balansuje warstwy" w
+          <a href="guide.html#energy">przewodniku PxrSurface</a>, to ta sama
+          pułapka w nowym kształcie. Lama daje ci uczciwe narzędzie do
+          powłok (Layer) i niebezpieczne (Add) obok siebie. Gdy masz
+          wątpliwości co do powłoki, sięgnij po <strong>LamaLayer</strong>,
+          nie <strong>LamaAdd</strong> — Layer zachowuje energię za ciebie,
+          Add nie.
+        </p>
       </div>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Node</th>
-              <th>Use when</th>
-              <th>Example</th>
+              <th><span lang="en">Node</span><span lang="pl">Węzeł</span></th>
+              <th><span lang="en">Use when</span><span lang="pl">Użyj gdy</span></th>
+              <th><span lang="en">Example</span><span lang="pl">Przykład</span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="col-pxr">LamaMix</td>
-              <td>The two materials are in different <em>places</em></td>
-              <td>Rust patches on steel, a decal on plastic</td>
+              <td><span lang="en">The two materials are in different <em>places</em></span><span lang="pl">Oba materiały są w różnych <em>miejscach</em></span></td>
+              <td><span lang="en">Rust patches on steel, a decal on plastic</span><span lang="pl">Plamy rdzy na stali, naklejka na plastiku</span></td>
             </tr>
             <tr>
               <td class="col-pxr">LamaLayer</td>
-              <td>One material <em>covers</em> the other</td>
-              <td>Clearcoat on car paint, varnish on wood, wet skin</td>
+              <td><span lang="en">One material <em>covers</em> the other</span><span lang="pl">Jeden materiał <em>pokrywa</em> drugi</span></td>
+              <td><span lang="en">Clearcoat on car paint, varnish on wood, wet skin</span><span lang="pl">Clearcoat na lakierze samochodowym, werniks na drewnie, mokra skóra</span></td>
             </tr>
             <tr>
               <td class="col-pxr">LamaAdd</td>
-              <td>Both respond at the same point, independently</td>
-              <td>A second broad sheen under a tight highlight</td>
+              <td><span lang="en">Both respond at the same point, independently</span><span lang="pl">Oba reagują w tym samym punkcie, niezależnie</span></td>
+              <td><span lang="en">A second broad sheen under a tight highlight</span><span lang="pl">Drugi szeroki połysk pod ciasnym rozbłyskiem</span></td>
             </tr>
           </tbody>
         </table>
       </div>
-    
+
       <div class="viz" id="viz-operators">
         <div class="viz__head">
-          <p class="viz__title">Where the light goes, per operator</p>
-          <p class="viz__sub">
+          <p class="viz__title"><span lang="en">Where the light goes, per operator</span><span lang="pl">Dokąd idzie światło, per operator</span></p>
+          <p class="viz__sub" lang="en">
             A hundred units of light arrive at one point on the surface. Each
             operator divides them up differently &mdash; and one of them doesn't
             divide them at all.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Sto jednostek światła dociera do jednego punktu na powierzchni.
+            Każdy operator dzieli je inaczej &mdash; a jeden z nich w ogóle
+            ich nie dzieli.
           </p>
         </div>
         <div class="viz__stage"><canvas id="ops-canvas" data-ratio="0.34"></canvas></div>
         <div class="viz__controls" id="ops-ctl">
           <div class="ctl ctl--seg">
-            <div class="ctl__label"><span>Operator</span></div>
+            <div class="ctl__label"><span lang="en">Operator</span><span lang="pl">Operator</span></div>
             <div class="seg" id="opMode" data-value="layer">
               <button type="button" data-val="mix">LamaMix</button>
               <button type="button" data-val="layer" class="is-active">LamaLayer</button>
@@ -302,14 +444,14 @@
           </div>
           <div class="ctl">
             <label class="ctl__label" for="opTop">
-              <span>Top / material 2 weight</span>
+              <span><span lang="en">Top / material 2 weight</span><span lang="pl">Waga górnego / materiału 2</span></span>
               <span class="ctl__value" data-value-for="opTop"></span>
             </label>
             <input type="range" id="opTop" min="0" max="1" step="0.01" value="0.6" data-fmt="2">
           </div>
           <div class="ctl">
             <label class="ctl__label" for="opBase">
-              <span>Base / material 1 weight</span>
+              <span><span lang="en">Base / material 1 weight</span><span lang="pl">Waga bazy / materiału 1</span></span>
               <span class="ctl__value" data-value-for="opBase"></span>
             </label>
             <input type="range" id="opBase" min="0" max="1" step="0.01" value="1" data-fmt="2">
@@ -317,7 +459,7 @@
         </div>
         <div class="readout" id="ops-readout"></div>
         <div class="viz__note">
-          <p>
+          <p lang="en">
             Mix and Layer can never exceed the light that arrived: Mix splits
             it by the mask, and Layer gives the base only what the top didn't
             take. Add has no such arithmetic in it &mdash; push both weights up and
@@ -325,92 +467,104 @@
             than fell on it. Nothing in the render will error; it will just
             quietly glow.
           </p>
+          <p lang="pl">
+            Mix i Layer nigdy nie mogą przekroczyć światła, które przyszło:
+            Mix dzieli je maską, a Layer daje bazie tylko to, czego nie
+            wzięła góra. Add nie ma w sobie takiej arytmetyki &mdash;
+            podnieś obie wagi, a pasek wybiega poza koniec, co oznacza
+            powierzchnię zwracającą więcej światła, niż na nią spadło. Nic w
+            renderze się nie wysypie; po prostu będzie po cichu świecić.
+          </p>
         </div>
       </div>
 
     </section>
 
     <section id="lookup">
-      <h2>Lobe → node lookup</h2>
-      <p>
+      <h2><span lang="en">Lobe → node lookup</span><span lang="pl">Płat → węzeł, ściąga</span></h2>
+      <p lang="en">
         If you know PxrSurface, this is the fastest route in: find the lobe you
         already understand and read across.
+      </p>
+      <p lang="pl">
+        Jeśli znasz PxrSurface, to najszybsza droga wejścia: znajdź płat,
+        który już rozumiesz, i przeczytaj wiersz.
       </p>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>PxrSurface lobe</th>
-              <th>Lama equivalent</th>
-              <th>Note</th>
+              <th><span lang="en">PxrSurface lobe</span><span lang="pl">Płat PxrSurface</span></th>
+              <th><span lang="en">Lama equivalent</span><span lang="pl">Odpowiednik w Lama</span></th>
+              <th><span lang="en">Note</span><span lang="pl">Uwaga</span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="col-arnold">Diffuse</td>
               <td class="col-pxr">LamaDiffuse</td>
-              <td>Direct equivalent.</td>
+              <td><span lang="en">Direct equivalent.</span><span lang="pl">Bezpośredni odpowiednik.</span></td>
             </tr>
             <tr>
-              <td class="col-arnold">Specular (metal)</td>
+              <td class="col-arnold"><span lang="en">Specular (metal)</span><span lang="pl">Specular (metal)</span></td>
               <td class="col-pxr">LamaConductor</td>
-              <td>Metals get their own node instead of a colored Fresnel — see below.</td>
+              <td><span lang="en">Metals get their own node instead of a colored Fresnel — see below.</span><span lang="pl">Metale dostają własny węzeł zamiast kolorowego Fresnela — patrz niżej.</span></td>
             </tr>
             <tr>
-              <td class="col-arnold">Specular (non-metal)</td>
-              <td class="col-pxr">LamaDielectric, layered over the base</td>
-              <td>The "varnish on paint" relationship becomes an explicit LamaLayer.</td>
+              <td class="col-arnold"><span lang="en">Specular (non-metal)</span><span lang="pl">Specular (niemetal)</span></td>
+              <td class="col-pxr"><span lang="en">LamaDielectric, layered over the base</span><span lang="pl">LamaDielectric, warstwowane nad bazą</span></td>
+              <td><span lang="en">The "varnish on paint" relationship becomes an explicit LamaLayer.</span><span lang="pl">Relacja „werniks na farbie" staje się jawnym LamaLayer.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Rough Specular</td>
-              <td class="col-pxr">A second LamaDielectric</td>
-              <td>Lama has no fixed limit — add as many as the material needs.</td>
+              <td class="col-pxr"><span lang="en">A second LamaDielectric</span><span lang="pl">Drugi LamaDielectric</span></td>
+              <td><span lang="en">Lama has no fixed limit — add as many as the material needs.</span><span lang="pl">Lama nie ma stałego limitu — dodaj tyle, ile potrzebuje materiał.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Clearcoat</td>
-              <td class="col-pxr">LamaDielectric as the top of a LamaLayer</td>
-              <td>Not a special layer type. A coat is just a dielectric on top of something.</td>
+              <td class="col-pxr"><span lang="en">LamaDielectric as the top of a LamaLayer</span><span lang="pl">LamaDielectric jako góra LamaLayer</span></td>
+              <td><span lang="en">Not a special layer type. A coat is just a dielectric on top of something.</span><span lang="pl">Nie specjalny typ warstwy. Powłoka to po prostu dielektryk na czymś.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Iridescence</td>
               <td class="col-pxr">LamaIridescence</td>
-              <td>Direct equivalent.</td>
+              <td><span lang="en">Direct equivalent.</span><span lang="pl">Bezpośredni odpowiednik.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Fuzz</td>
               <td class="col-pxr">LamaSheen</td>
-              <td>Direct equivalent.</td>
+              <td><span lang="en">Direct equivalent.</span><span lang="pl">Bezpośredni odpowiednik.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Subsurface</td>
               <td class="col-pxr">LamaSSS / LamaTriColorSSS</td>
-              <td>TriColor is the skin-oriented variant. See the <a href="sss.html">subsurface deep dive</a> for how the distances work.</td>
+              <td><span lang="en">TriColor is the skin-oriented variant. See the <a href="sss.html">subsurface deep dive</a> for how the distances work.</span><span lang="pl">TriColor to wariant zorientowany na skórę. Patrz <a href="sss.html">dogłębna analiza subsurface</a>, jak działają odległości.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Glass</td>
               <td class="col-pxr">LamaDielectric</td>
-              <td>Same node as plastic and varnish — glass is just a dielectric you can see through.</td>
+              <td><span lang="en">Same node as plastic and varnish — glass is just a dielectric you can see through.</span><span lang="pl">Ten sam węzeł co plastik i werniks — szkło to po prostu dielektryk, przez który widać.</span></td>
             </tr>
             <tr>
-              <td class="col-arnold">Interior / absorption</td>
+              <td class="col-arnold"><span lang="en">Interior / absorption</span><span lang="pl">Interior / absorpcja</span></td>
               <td class="col-pxr">LamaDielectric → Absorption Color &amp; Radius</td>
-              <td>Lives on the dielectric itself rather than in a separate section.</td>
+              <td><span lang="en">Lives on the dielectric itself rather than in a separate section.</span><span lang="pl">Mieszka na samym dielektryku, a nie w osobnej sekcji.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Glow</td>
               <td class="col-pxr">LamaEmission</td>
-              <td>Direct equivalent.</td>
+              <td><span lang="en">Direct equivalent.</span><span lang="pl">Bezpośredni odpowiednik.</span></td>
             </tr>
             <tr>
-              <td class="col-arnold"><em>No equivalent</em></td>
+              <td class="col-arnold"><em><span lang="en">No equivalent</span><span lang="pl">brak odpowiednika</span></em></td>
               <td class="col-pxr">LamaTranslucent</td>
-              <td>Diffuse transmission through thin surfaces — paper, leaves, lampshades.</td>
+              <td><span lang="en">Diffuse transmission through thin surfaces — paper, leaves, lampshades.</span><span lang="pl">Dyfuzyjna transmisja przez cienkie powierzchnie — papier, liście, abażury.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Presence</td>
-              <td class="col-pxr"><em>Handled outside the material</em></td>
-              <td>Cutouts aren't a Lama node; they stay a geometry-level concern.</td>
+              <td class="col-pxr"><em><span lang="en">Handled outside the material</span><span lang="pl">Obsłużone poza materiałem</span></em></td>
+              <td><span lang="en">Cutouts aren't a Lama node; they stay a geometry-level concern.</span><span lang="pl">Wycięcia nie są węzłem Lama; zostają sprawą na poziomie geometrii.</span></td>
             </tr>
           </tbody>
         </table>
@@ -418,21 +572,35 @@
     </section>
 
     <section id="metals">
-      <h2>Metals</h2>
-      <p>
+      <h2><span lang="en">Metals</span><span lang="pl">Metale</span></h2>
+      <p lang="en">
         If you came through the <a href="guide.html#specular">AiStandardSurface
         guide</a>, you'll remember that metals in PxrSurface mean tinting Face
         and Edge Color by hand and remembering to zero the diffuse. Lama takes
         the opposite approach: a metal is a different <em>node</em>, not a
         differently-tuned one.
       </p>
-      <p>
+      <p lang="pl">
+        Jeśli przeszedłeś przez <a href="guide.html#specular">przewodnik
+        AiStandardSurface</a>, pamiętasz, że metale w PxrSurface oznaczają
+        ręczne zabarwienie Face i Edge Color oraz pamiętanie o wyzerowaniu
+        diffuse. Lama przyjmuje odwrotne podejście: metal to inny
+        <em>węzeł</em>, nie inaczej dostrojony.
+      </p>
+      <p lang="en">
         <strong>LamaConductor</strong> only does metal. There's no diffuse lobe
         inside it to accidentally leave switched on, which quietly removes the
         single most common metal mistake in PxrSurface.
       </p>
-      <p>It offers two ways to describe the metal:</p>
-      <ul>
+      <p lang="pl">
+        <strong>LamaConductor</strong> robi tylko metal. Nie ma w nim
+        żadnego płata diffuse, który dałoby się przypadkiem zostawić
+        włączony, co po cichu usuwa pojedynczy najczęstszy błąd z metalami w
+        PxrSurface.
+      </p>
+      <p lang="en">It offers two ways to describe the metal:</p>
+      <p lang="pl">Oferuje dwa sposoby opisania metalu:</p>
+      <ul lang="en">
         <li>
           <strong>Artistic mode</strong> — <strong>Reflectivity</strong> (the
           color reflected head-on) and <strong>Edge Color</strong> (how that
@@ -447,14 +615,34 @@
           values.
         </li>
       </ul>
-      <p class="muted">
+      <ul lang="pl">
+        <li>
+          <strong>Artistic mode</strong> — <strong>Reflectivity</strong>
+          (kolor odbity wprost) i <strong>Edge Color</strong> (jak zmienia
+          się pod kątem ślizgowym). Koncepcyjnie identyczne z Face i Edge
+          Color PxrSurface, więc wszystko, czego się tam nauczyłeś, przenosi
+          się bezpośrednio.
+        </li>
+        <li>
+          <strong>Scientific mode</strong> — <strong>IOR</strong> i
+          <strong>Extinction</strong>, po trzy liczby każde, wzięte ze
+          zmierzonych danych dla prawdziwych metali. Miedź, aluminium i
+          złoto mają opublikowane wartości.
+        </li>
+      </ul>
+      <p class="muted" lang="en">
         LamaConductor ships defaulting to gold, in both parameterisations. Drop
         one into a graph and it looks like gold immediately — a useful sanity
         check that the node is doing something.
       </p>
+      <p class="muted" lang="pl">
+        LamaConductor przychodzi domyślnie jako złoto, w obu
+        parametryzacjach. Wrzuć jeden do grafu, a od razu wygląda jak złoto —
+        użyteczny sanity check, że węzeł coś robi.
+      </p>
       <div class="callout">
-        <div class="callout__title">↔ Coming from PxrSurface</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from PxrSurface</span><span lang="pl">Przesiadka z PxrSurface</span></div>
+        <p lang="en">
           There's a <strong>Tint</strong> input, and the documentation asks you
           to use it "with parsimony, as a non-white value breaks physicality."
           That's a fair warning: Tint is a multiplier over the whole result, not
@@ -462,129 +650,213 @@
           Edge Color, and keep Tint for art-directed cheats you're making on
           purpose.
         </p>
+        <p lang="pl">
+          Jest wejście <strong>Tint</strong>, a dokumentacja prosi, byś
+          używał go „oszczędnie, bo wartość niebiała łamie fizyczność". To
+          uczciwe ostrzeżenie: Tint to mnożnik na całym wyniku, nie opis
+          metalu. Barw swój metal przez Reflectivity i Edge Color, a Tint
+          zostaw na świadome, celowe oszustwa art-directorskie.
+        </p>
       </div>
-      <p>
+      <p lang="en">
         Car paint is the example that shows the whole system working: a
         <strong>LamaConductor</strong> for the flake, a
         <strong>LamaDielectric</strong> for the lacquer, joined by a
         <strong>LamaLayer</strong>. Three nodes, no gains to balance, and the
         coat correctly takes its share of the light before the metal sees any.
       </p>
+      <p lang="pl">
+        Lakier samochodowy to przykład pokazujący cały system w akcji:
+        <strong>LamaConductor</strong> dla płatka metalu,
+        <strong>LamaDielectric</strong> dla lakieru, połączone
+        <strong>LamaLayer</strong>. Trzy węzły, żadnych gainów do
+        balansowania, a powłoka poprawnie bierze swój udział światła, zanim
+        metal cokolwiek zobaczy.
+      </p>
     </section>
 
     <section id="which">
-      <h2>Which one should you use</h2>
-      <p>
+      <h2><span lang="en">Which one should you use</span><span lang="pl">Którego użyć</span></h2>
+      <p lang="en">
         Neither is the upgrade. They're shaped for different problems, and most
         studios end up using both.
       </p>
+      <p lang="pl">
+        Żaden nie jest ulepszeniem drugiego. Są ukształtowane pod różne
+        problemy, i większość studiów kończy, używając obu.
+      </p>
 
-      <h3>Reach for PxrSurface when</h3>
-      <ul>
+      <h3><span lang="en">Reach for PxrSurface when</span><span lang="pl">Sięgnij po PxrSurface, gdy</span></h3>
+      <ul lang="en">
         <li>The material fits the stack — most props, sets and hard surfaces do.</li>
         <li>You want one node in the graph and one place to look when something's wrong.</li>
         <li>You're converting existing materials from another renderer, where the parameter-for-parameter mapping matters more than elegance.</li>
         <li>You need Presence for cutouts, or the per-lobe bump inputs.</li>
       </ul>
+      <ul lang="pl">
+        <li>Materiał pasuje do stosu — pasuje do większości rekwizytów, setów i twardych powierzchni.</li>
+        <li>Chcesz jednego węzła w grafie i jednego miejsca do sprawdzenia, gdy coś jest nie tak.</li>
+        <li>Konwertujesz istniejące materiały z innego renderera, gdzie mapowanie parametr-po-parametrze liczy się bardziej niż elegancja.</li>
+        <li>Potrzebujesz Presence do wycięć albo wejść bump per-płat.</li>
+      </ul>
 
-      <h3>Reach for Lama when</h3>
-      <ul>
+      <h3><span lang="en">Reach for Lama when</span><span lang="pl">Sięgnij po Lama, gdy</span></h3>
+      <ul lang="en">
         <li>The material is genuinely layered — lacquer over metallic flake over primer — and the stack's single clearcoat isn't enough.</li>
         <li>You need two of something PxrSurface only has one of.</li>
         <li>Your pipeline is MaterialX-based and the material has to travel to other software.</li>
         <li>You want the graph itself to document the material, rather than a node with two hundred parameters where only nine are non-default.</li>
       </ul>
+      <ul lang="pl">
+        <li>Materiał jest naprawdę warstwowy — lakier na metalicznym płatku na podkładzie — a pojedynczy clearcoat stosu nie wystarcza.</li>
+        <li>Potrzebujesz dwóch czegoś, czego PxrSurface ma tylko jedno.</li>
+        <li>Twój pipeline jest oparty na MaterialX, a materiał musi podróżować do innego oprogramowania.</li>
+        <li>Chcesz, by sam graf dokumentował materiał, zamiast węzła z dwustoma parametrami, z których tylko dziewięć jest niedomyślnych.</li>
+      </ul>
 
       <div class="callout">
-        <div class="callout__title">A reasonable default</div>
-        <p>
+        <div class="callout__title"><span lang="en">A reasonable default</span><span lang="pl">Rozsądny default</span></div>
+        <p lang="en">
           Start with PxrSurface. Move a material to Lama when you catch
           yourself fighting the fixed stack — faking a second coat, or wanting a
           layer relationship the stack doesn't offer. That moment is a real
           signal, and it doesn't arrive for most materials.
         </p>
+        <p lang="pl">
+          Zacznij od PxrSurface. Przenieś materiał do Lama, gdy złapiesz się
+          na walce ze stałym stosem — udawaniu drugiej powłoki albo chęci
+          relacji warstwowej, której stos nie oferuje. Ten moment to
+          prawdziwy sygnał i dla większości materiałów w ogóle nie przychodzi.
+        </p>
       </div>
     </section>
 
     <section id="pitfalls">
-      <h2>Common pitfalls</h2>
+      <h2><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></h2>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "My layered material is too bright"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"My layered material is too bright"</span><span lang="pl">„Mój warstwowy materiał jest zbyt jasny"</span></div>
+        <p lang="en">
           Almost always <strong>LamaAdd</strong> where
           <strong>LamaLayer</strong> was wanted. Add sums both materials at full
           strength; Layer makes the top one take its share first and pass the
           rest down. For anything that reads as a coating, use Layer.
         </p>
-      </div>
-
-      <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The mask blends the wrong way round"</div>
-        <p>
-          LamaMix runs 0 → Material 1 and 1 → Material 2. It helps to read the
-          mix input as a mask for <em>Material 2 over Material 1</em>, and plug
-          your two materials in accordingly rather than inverting textures.
+        <p lang="pl">
+          Niemal zawsze <strong>LamaAdd</strong> tam, gdzie potrzebny był
+          <strong>LamaLayer</strong>. Add sumuje oba materiały z pełną siłą;
+          Layer sprawia, że górny bierze swój udział pierwszy i przekazuje
+          resztę niżej. Do wszystkiego, co czyta się jako powłoka, użyj
+          Layer.
         </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "My metal has a diffuse sheen I can't remove"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The mask blends the wrong way round"</span><span lang="pl">„Maska blenduje w złą stronę"</span></div>
+        <p lang="en">
+          LamaMix runs 0 → Material 1 and 1 → Material 2. It helps to read the
+          mix input as a mask for <em>Material 2 over Material 1</em>, and plug
+          your two materials in accordingly rather than inverting textures.
+        </p>
+        <p lang="pl">
+          LamaMix biegnie 0 → Materiał 1 i 1 → Materiał 2. Pomaga czytać
+          wejście mix jako maskę dla <em>Materiału 2 na Materiale 1</em>, i
+          podłączać oba materiały odpowiednio, zamiast odwracać tekstury.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"My metal has a diffuse sheen I can't remove"</span><span lang="pl">„Mój metal ma połysk diffuse, którego nie mogę usunąć"</span></div>
+        <p lang="en">
           If you built the metal from LamaDiffuse plus a reflection instead of
           using <strong>LamaConductor</strong>, you've recreated the PxrSurface
           metal problem by hand. Metals have no diffuse component — use the node
           that has none.
         </p>
+        <p lang="pl">
+          Jeśli zbudowałeś metal z LamaDiffuse plus odbicie zamiast użyć
+          <strong>LamaConductor</strong>, odtworzyłeś ręcznie problem metalu
+          z PxrSurface. Metale nie mają komponentu diffuse — użyj węzła,
+          który go nie ma.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The tinted coat doesn't tint what's under it"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The tinted coat doesn't tint what's under it"</span><span lang="pl">„Zabarwiona powłoka nie barwi tego, co pod nią"</span></div>
+        <p lang="en">
           Absorption in a LamaLayer's top material needs
           <strong>Top Thickness</strong> to be non-zero — it defaults to 0,
           meaning no interior distance for light to travel through, so no
           tinting. Set it before assuming the absorption color is broken.
         </p>
+        <p lang="pl">
+          Absorpcja w górnym materiale LamaLayer wymaga niezerowego
+          <strong>Top Thickness</strong> — domyślnie stoi na 0, co oznacza
+          brak wewnętrznej odległości, przez którą mogłoby podróżować
+          światło, więc brak barwienia. Ustaw je, zanim uznasz, że kolor
+          absorpcji jest zepsuty.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "I can't find the cutout parameter"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"I can't find the cutout parameter"</span><span lang="pl">„Nie mogę znaleźć parametru wycięcia"</span></div>
+        <p lang="en">
           There isn't one. Presence has no Lama node — cutouts stay a
           geometry-level concern. If a material's whole job is leaf cards,
           that's a point in PxrSurface's favour.
+        </p>
+        <p lang="pl">
+          Bo go nie ma. Presence nie ma węzła w Lama — wycięcia zostają
+          sprawą na poziomie geometrii. Jeśli całą pracą materiału są karty
+          liści, to punkt na korzyść PxrSurface.
         </p>
       </div>
     </section>
 
     <div class="card card--trailing">
-      <span class="badge">Companion guide</span>
+      <span class="badge"><span lang="en">Companion guide</span><span lang="pl">Powiązany przewodnik</span></span>
       <h3>AiStandardSurface → PxrSurface</h3>
-      <p class="muted">
+      <p class="muted" lang="en">
         Coming to RenderMan from Arnold? The parameter-by-parameter transition
         guide covers the stack this page compares against, and the
         <a href="sss.html">subsurface deep dive</a> takes on the layer that
         differs most.
       </p>
-      <p><a href="guide.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        Przechodzisz do RenderMana z Arnolda? Przewodnik przejścia
+        parametr po parametrze omawia stos, z którym porównuje ta strona, a
+        <a href="sss.html">dogłębna analiza subsurface</a> zajmuje się
+        warstwą, która różni się najbardziej.
+      </p>
+      <p><a href="guide.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
   </main>
 </div>
 
 <footer>
-  <p>
+  <p lang="en">
     Written for lookdev and lighting artists switching render engines. No prior
     shader-writing knowledge assumed.
   </p>
-  <p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
     Node names, inputs and defaults on this page were checked against the
     <strong>MaterialX Lama</strong> node definitions in the Academy Software
     Foundation's MaterialX libraries and the Lama nodes shipped with RenderMan
     27. Always sanity check against the version installed in your pipeline.
   </p>
-  <p class="muted">Last updated: 26 August 2026.</p>
+  <p lang="pl">
+    Nazwy węzłów, wejścia i wartości domyślne na tej stronie zostały
+    sprawdzone względem definicji węzłów <strong>MaterialX Lama</strong> w
+    bibliotekach MaterialX Academy Software Foundation i węzłach Lama
+    dostarczanych z RenderMan 27. Zawsze sprawdź to względem wersji
+    zainstalowanej w twoim pipeline.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 26 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 26 sierpnia 2026.</span></p>
 </footer>
 
 <script type="module" src="assets/js/lama.js"></script>
