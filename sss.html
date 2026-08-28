@@ -1388,89 +1388,187 @@
           shouldn't.
         </li>
       </ol>
+      <ol class="steps" lang="pl">
+        <li>
+          <strong>Sprawdź skalę swojej sceny i ustaw Unit Length
+          odpowiednio.</strong> To nie parametr subsurface, ale mnoży każdą
+          inną liczbę, którą zaraz ustawisz. Centymetry oznaczają 0.1,
+          default. Cokolwiek innego oznacza zmianę. Pomylenie się tutaj
+          czyni każdy krok poniżej nienaprawialnym.
+        </li>
+        <li>
+          <strong>Ustaw model tak, by pasował do tego, czego używał
+          Arnold.</strong> <code>randomwalk</code> → jedna z opcji
+          <strong>Path Traced</strong>; <code>diffusion</code> → dipol. Zrób
+          to, zanim wpiszesz jakiekolwiek liczby, bo to zmienia, które liczby
+          mają znaczenie.
+        </li>
+        <li>
+          <strong>Przenieś oba pola odległości, ostrożnie.</strong>
+          <strong>Radius</strong> Arnolda → <strong>Mean Free Path
+          Color</strong>. <strong>Scale</strong> Arnolda → <strong>Mean Free
+          Path Distance</strong>. Jeśli jesteś teraz w trybie Path Traced,
+          spodziewaj się polegania na kolorach zamiast na odległości.
+        </li>
+        <li>
+          <strong>Skopiuj Subsurface Color i Gain.</strong> To bezpośrednie
+          zamiany i nie wymagają zastanowienia.
+        </li>
+        <li>
+          <strong>Zapłać rachunek energetyczny.</strong> Obniż
+          <strong>Diffuse Gain</strong> w miarę podnoszenia Subsurface Gain.
+          Nic nie robi tego za ciebie. Pomiń to, a wszystko po tym punkcie
+          jest oceniane na tle podwójnie oświetlonego materiału.
+        </li>
+        <li>
+          <strong>Teraz spójrz na to, na tle referencji.</strong> Pod
+          światło, z cienkim obszarem w kadrze — uchem, nozdrzem, palcem.
+          Subsurface oświetlony z przodu ukrywa każdy błąd, który właśnie
+          popełniłeś.
+        </li>
+        <li>
+          <strong>Dopiero teraz rozważ Single Scatter.</strong> Jeśli
+          jesteś na modelu dipolowym, a materiał stracił swoje ostre
+          przelotowe światło, dodaj go. Jeśli jesteś na Path Traced albo
+          Burley, niemal na pewno nie powinieneś.
+        </li>
+      </ol>
     </section>
 
     <section id="pitfalls">
-      <h2>Common pitfalls</h2>
+      <h2><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></h2>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "Subsurface does nothing, or completely floods the object"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"Subsurface does nothing, or completely floods the object"</span><span lang="pl">„Subsurface nic nie robi albo całkowicie zalewa obiekt"</span></div>
+        <p lang="en">
           Check <strong>Unit Length</strong> against the scale your scene is
           modelled at, before anything else. It's on the Scattering Globals
           page, it defaults to 0.1 assuming centimetres, and if your scene is in
           metres you're off by 100×. This is the single most common cause and
           the hardest to spot, because no subsurface parameter looks wrong.
         </p>
+        <p lang="pl">
+          Sprawdź <strong>Unit Length</strong> względem skali, w jakiej
+          modelowana jest twoja scena, przed czymkolwiek innym. Jest na
+          stronie Scattering Globals, domyślnie stoi na 0.1, zakładając
+          centymetry, a jeśli twoja scena jest w metrach, jesteś przesunięty
+          o 100×. To pojedyncza najczęstsza przyczyna i najtrudniejsza do
+          wyłapania, bo żaden parametr subsurface nie wygląda na błędny.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "Skin looks fine on the cheek and rubbery at the ears"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"Skin looks fine on the cheek and rubbery at the ears"</span><span lang="pl">„Skóra wygląda dobrze na policzku i gumowato na uszach"</span></div>
+        <p lang="en">
           You're still on <strong>Jensen Dipole</strong>, PxrSurface's default,
           while the Arnold material was authored with <code>randomwalk</code>.
           Dipole approximations break down precisely on thin geometry. Switch to
           a <strong>Path Traced</strong> model.
         </p>
+        <p lang="pl">
+          Wciąż jesteś na <strong>Jensen Dipole</strong>, domyślnym w
+          PxrSurface, podczas gdy materiał z Arnolda powstał z
+          <code>randomwalk</code>. Przybliżenia dipolowe rozpadają się
+          dokładnie na cienkiej geometrii. Przełącz na model
+          <strong>Path Traced</strong>.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The material is the wrong colour and the wrong depth at once"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The material is the wrong colour and the wrong depth at once"</span><span lang="pl">„Materiał ma zły kolor i złą głębię naraz"</span></div>
+        <p lang="en">
           You've likely swapped the fields. Arnold's <strong>Radius</strong> is
           the colour and belongs in <strong>Mean Free Path Color</strong>;
           Arnold's <strong>Scale</strong> is the distance and belongs in
           <strong>Mean Free Path Distance</strong>. The names invite exactly the
           opposite guess.
         </p>
+        <p lang="pl">
+          Prawdopodobnie zamieniłeś pola miejscami. <strong>Radius</strong>
+          Arnolda to kolor i należy do <strong>Mean Free Path Color</strong>;
+          <strong>Scale</strong> Arnolda to odległość i należy do
+          <strong>Mean Free Path Distance</strong>. Nazwy zachęcają dokładnie
+          do odwrotnego zgadnięcia.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "I'm changing Mean Free Path Color and nothing happens"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"I'm changing Mean Free Path Color and nothing happens"</span><span lang="pl">„Zmieniam Mean Free Path Color i nic się nie dzieje"</span></div>
+        <p lang="en">
           You're in <strong>Multiple Mean Free Paths</strong> mode, which
           ignores that parameter entirely and uses the short, medium and long
           colours instead. Either switch model, or set the per-range colours.
         </p>
+        <p lang="pl">
+          Jesteś w trybie <strong>Multiple Mean Free Paths</strong>, który
+          całkowicie ignoruje ten parametr i używa zamiast niego kolorów
+          krótkiego, średniego i długiego zakresu. Albo zmień model, albo
+          ustaw kolory per zakres.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "It looks washed out and flat rather than soft"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"It looks washed out and flat rather than soft"</span><span lang="pl">„Wygląda wyprane i płasko zamiast miękko"</span></div>
+        <p lang="en">
           <strong>Diffuse Gain</strong> is still up. Arnold fades the diffuse
           layer as subsurface rises; PxrSurface leaves that to you, so the
           material is being lit twice. Take Diffuse Gain down.
         </p>
-      </div>
-
-      <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "There are dark patches along sharp edges"</div>
-        <p>
-          A known artefact of the approximation on hard edges, and
-          <strong>Diffuse Blend</strong> exists specifically to fix it — a small
-          amount is usually enough. Worth trying before you rebuild geometry.
+        <p lang="pl">
+          <strong>Diffuse Gain</strong> wciąż jest podniesiony. Arnold
+          wygasza warstwę diffuse w miarę wzrostu subsurface; PxrSurface
+          zostawia to tobie, więc materiał jest oświetlany dwukrotnie. Obniż
+          Diffuse Gain.
         </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The through-light is too bright, or too noisy"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"There are dark patches along sharp edges"</span><span lang="pl">„Są ciemne plamy wzdłuż ostrych krawędzi"</span></div>
+        <p lang="en">
+          A known artefact of the approximation on hard edges, and
+          <strong>Diffuse Blend</strong> exists specifically to fix it — a small
+          amount is usually enough. Worth trying before you rebuild geometry.
+        </p>
+        <p lang="pl">
+          Znany artefakt przybliżenia na twardych krawędziach, i
+          <strong>Diffuse Blend</strong> istnieje specjalnie po to, by to
+          naprawić — zwykle wystarczy niewielka ilość. Warto spróbować,
+          zanim przebudujesz geometrię.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The through-light is too bright, or too noisy"</span><span lang="pl">„Światło przelotowe jest zbyt jasne albo zbyt zaszumione"</span></div>
+        <p lang="en">
           If you added <strong>Single Scatter</strong> on top of a Path Traced or
           Burley model, you're counting the same light twice — those models
           already include single scattering. If you need it, you're on a dipole.
+        </p>
+        <p lang="pl">
+          Jeśli dodałeś <strong>Single Scatter</strong> na wierzch modelu
+          Path Traced albo Burley, liczysz to samo światło dwukrotnie — te
+          modele już uwzględniają pojedyncze rozproszenie. Jeśli go
+          potrzebujesz, jesteś na dipolu.
         </p>
       </div>
     </section>
 
     <div class="card card--trailing">
-      <span class="badge">Companion guides</span>
-      <h3>The rest of the shader</h3>
-      <p class="muted">
+      <span class="badge"><span lang="en">Companion guides</span><span lang="pl">Powiązane przewodniki</span></span>
+      <h3><span lang="en">The rest of the shader</span><span lang="pl">Reszta shadera</span></h3>
+      <p class="muted" lang="en">
         This page goes deep on one layer. The
         <a href="guide.html">AiStandardSurface → PxrSurface guide</a> covers all
         of them, parameter by parameter, and
         <a href="lama.html">PxrSurface vs Lama</a> compares the two ways to
         build a material in RenderMan.
+      </p>
+      <p class="muted" lang="pl">
+        Ta strona głęboko analizuje jedną warstwę.
+        <a href="guide.html">Przewodnik AiStandardSurface → PxrSurface</a>
+        omawia je wszystkie, parametr po parametrze, a
+        <a href="lama.html">PxrSurface vs Lama</a> porównuje dwa sposoby
+        budowania materiału w RenderManie.
       </p>
     </div>
 
@@ -1478,11 +1576,15 @@
 </div>
 
 <footer>
-  <p>
+  <p lang="en">
     Written for lookdev and lighting artists switching render engines. No prior
     shader-writing knowledge assumed.
   </p>
-  <p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
     Parameter names, defaults, enum values and conversion factors on this page
     were checked against the <strong>PxrSurface</strong> shader definition in
     RenderMan 27, Pixar's own Standard Surface → PxrSurface conversion shader
@@ -1491,7 +1593,17 @@
     shader metadata queried directly with <code>kick -info</code>. Always sanity
     check against the versions installed in your pipeline.
   </p>
-  <p class="muted">Last updated: 27 August 2026.</p>
+  <p lang="pl">
+    Nazwy parametrów, wartości domyślne, wartości enum i współczynniki
+    konwersji na tej stronie zostały sprawdzone względem definicji shadera
+    <strong>PxrSurface</strong> w RenderMan 27, własnego shadera konwersji
+    Standard Surface → PxrSurface Pixara dostarczanego z RenderManem dla
+    Maya, specyfikacji <strong>Autodesk Standard Surface</strong>, i
+    własnych metadanych shadera Arnolda odpytanych bezpośrednio przez
+    <code>kick -info</code>. Zawsze sprawdź to względem wersji
+    zainstalowanych w twoim pipeline.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 27 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 27 sierpnia 2026.</span></p>
 </footer>
 
 <script type="module" src="assets/js/sss.js"></script>
