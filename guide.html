@@ -1,15 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AiStandardSurface → PxrSurface Guide</title>
+<title data-title-pl="AiStandardSurface → PxrSurface — przewodnik">AiStandardSurface → PxrSurface Guide</title>
 <meta name="description" content="A plain-language guide for non-technical artists moving from Arnold's AiStandardSurface to RenderMan's PxrSurface.">
 <link rel="stylesheet" href="assets/css/style.css">
+<script>
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
 </head>
 <body>
 
-<nav class="topnav">
+<nav class="topnav topnav--i18n">
   <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
   <div class="topnav__links">
     <a href="index.html">Home</a>
@@ -20,52 +28,71 @@
     <a href="aniso.html">Anisotropy</a>
     <a href="fuzz.html">Fuzz</a>
   </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
 </nav>
 
 <header class="hero">
-  <p class="section-kicker">Transition guide</p>
+  <p class="section-kicker"><span lang="en">Transition guide</span><span lang="pl">Przewodnik przejścia</span></p>
   <h1>AiStandardSurface → PxrSurface</h1>
-  <p class="lead">
+  <p class="lead" lang="en">
     Same job, different toolbox. This guide maps Arnold's AiStandardSurface
     controls onto RenderMan's PxrSurface, explains what each parameter is
     actually doing to the light, and flags the handful of places the two
     shaders think about materials differently.
   </p>
+  <p class="lead" lang="pl">
+    Ta sama praca, inna skrzynka z narzędziami. Ten przewodnik mapuje
+    kontrolki AiStandardSurface Arnolda na PxrSurface RenderMana, wyjaśnia,
+    co każdy parametr naprawdę robi ze światłem, i zaznacza garstkę miejsc,
+    w których oba shadery inaczej myślą o materiałach.
+  </p>
 </header>
 
 <div class="guide-layout">
   <aside class="toc">
-    <h2>On this page</h2>
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
     <ol>
-      <li><a href="#mental-model">The mental model</a></li>
-      <li><a href="#quick-reference">Quick reference table</a></li>
-      <li><a href="#diffuse">Diffuse / Base</a></li>
-      <li><a href="#specular">Specular &amp; "metalness"</a></li>
-      <li><a href="#energy">Who balances the layers</a></li>
+      <li><a href="#mental-model"><span lang="en">The mental model</span><span lang="pl">Model mentalny</span></a></li>
+      <li><a href="#quick-reference"><span lang="en">Quick reference table</span><span lang="pl">Tabela szybkiego odniesienia</span></a></li>
+      <li><a href="#diffuse"><span lang="en">Diffuse / Base</span><span lang="pl">Diffuse / Base</span></a></li>
+      <li><a href="#specular"><span lang="en">Specular &amp; "metalness"</span><span lang="pl">Specular i „metaliczność"</span></a></li>
+      <li><a href="#energy"><span lang="en">Who balances the layers</span><span lang="pl">Kto balansuje warstwy</span></a></li>
       <li><a href="#clearcoat">Clearcoat</a></li>
-      <li><a href="#fuzz">Sheen → Fuzz</a></li>
-      <li><a href="#subsurface">Subsurface scattering</a></li>
-      <li><a href="#glow">Emission → Glow</a></li>
-      <li><a href="#transmission">Transmission / Glass</a></li>
-      <li><a href="#bump">Bump, normal &amp; displacement</a></li>
-      <li><a href="#presence">Presence &amp; opacity</a></li>
-      <li><a href="#iridescence">Iridescence &amp; thin film</a></li>
-      <li><a href="#first-15">Your first 15 minutes</a></li>
-      <li><a href="#pitfalls">Common pitfalls</a></li>
+      <li><a href="#fuzz"><span lang="en">Sheen → Fuzz</span><span lang="pl">Sheen → Fuzz</span></a></li>
+      <li><a href="#subsurface"><span lang="en">Subsurface scattering</span><span lang="pl">Subsurface scattering</span></a></li>
+      <li><a href="#glow"><span lang="en">Emission → Glow</span><span lang="pl">Emission → Glow</span></a></li>
+      <li><a href="#transmission"><span lang="en">Transmission / Glass</span><span lang="pl">Transmission / Glass</span></a></li>
+      <li><a href="#bump"><span lang="en">Bump, normal &amp; displacement</span><span lang="pl">Bump, normal i displacement</span></a></li>
+      <li><a href="#presence"><span lang="en">Presence &amp; opacity</span><span lang="pl">Presence i opacity</span></a></li>
+      <li><a href="#iridescence"><span lang="en">Iridescence &amp; thin film</span><span lang="pl">Iridescence i cienka warstwa</span></a></li>
+      <li><a href="#first-15"><span lang="en">Your first 15 minutes</span><span lang="pl">Twoje pierwsze 15 minut</span></a></li>
+      <li><a href="#pitfalls"><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></a></li>
     </ol>
   </aside>
 
   <main class="guide-content">
 
     <section id="mental-model">
-      <h2>The mental model</h2>
-      <p>
+      <h2><span lang="en">The mental model</span><span lang="pl">Model mentalny</span></h2>
+      <p lang="en">
         Both shaders are "one node does everything" surface shaders — you're not
         switching to a node-graph-per-material workflow. PxrSurface is built the
         same way AiStandardSurface is: a stack of light-response <strong>layers</strong>
         (diffuse, specular, a coat, subsurface, and so on) that all live inside one
         shader and blend together. The stack is just organized and named a little
         differently.
+      </p>
+      <p lang="pl">
+        Oba shadery to shadery powierzchni typu „jeden węzeł robi wszystko" —
+        nie przechodzisz na workflow z grafem węzłów na materiał. PxrSurface
+        jest zbudowany tak samo jak AiStandardSurface: stos reagujących na
+        światło <strong>warstw</strong> (diffuse, specular, powłoka,
+        subsurface i tak dalej), które wszystkie żyją wewnątrz jednego
+        shadera i mieszają się razem. Stos jest po prostu inaczej
+        zorganizowany i nazwany.
       </p>
 
       <div class="stack-compare">
@@ -97,27 +124,47 @@
         </div>
       </div>
 
-      <p class="muted">
+      <p class="muted" lang="en">
         Broadly the same jobs, different names for most of them. The one layer
         that genuinely works differently — not just a rename — is Specular,
         because that's where "metalness" lives in Arnold and doesn't exist as a
         single slider in PxrSurface. More on that below.
       </p>
-      <p class="muted">
+      <p class="muted" lang="pl">
+        Ogólnie te same zadania, dla większości po prostu inne nazwy. Jedyna
+        warstwa, która naprawdę działa inaczej — nie tylko ma inną nazwę — to
+        Specular, bo właśnie tam w Arnoldzie mieszka „metaliczność"
+        (Metalness) i nie istnieje jako pojedynczy suwak w PxrSurface. Więcej
+        o tym niżej.
+      </p>
+      <p class="muted" lang="en">
         PxrSurface also has one lobe with no Arnold counterpart at all:
         <strong>Rough Specular</strong>, a complete second specular layer with
         its own colors, roughness and bump. Nothing in AiStandardSurface maps
         onto it, so it stays switched off unless you deliberately reach for it.
       </p>
+      <p class="muted" lang="pl">
+        PxrSurface ma też jeden płat, który nie ma żadnego odpowiednika w
+        Arnoldzie: <strong>Rough Specular</strong>, kompletną drugą warstwę
+        specular z własnymi kolorami, roughness i bumpem. Nic w
+        AiStandardSurface się na nią nie mapuje, więc zostaje wyłączona, o
+        ile świadomie po nią nie sięgniesz.
+      </p>
     </section>
 
     <section id="quick-reference">
-      <h2>Quick reference table</h2>
-      <p>
+      <h2><span lang="en">Quick reference table</span><span lang="pl">Tabela szybkiego odniesienia</span></h2>
+      <p lang="en">
         Look up a single control here, then jump to its section below for the
         full explanation. Where a name in brackets appears, that's the internal
         parameter name — useful when you're searching a node editor rather than
         reading a UI label.
+      </p>
+      <p lang="pl">
+        Znajdź tu pojedynczą kontrolkę, a potem przejdź do jej sekcji niżej po
+        pełne wyjaśnienie. Tam, gdzie pojawia się nazwa w nawiasie, to
+        wewnętrzna nazwa parametru — przydatna, gdy szukasz w edytorze węzłów,
+        a nie czytasz etykiety w interfejsie.
       </p>
 
       <div class="table-scroll">
@@ -126,144 +173,144 @@
             <tr>
               <th>AiStandardSurface</th>
               <th>PxrSurface</th>
-              <th>Note</th>
+              <th><span lang="en">Note</span><span lang="pl">Uwaga</span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="col-arnold">Base Color</td>
               <td class="col-pxr">Diffuse Color</td>
-              <td>Direct swap.</td>
+              <td><span lang="en">Direct swap.</span><span lang="pl">Bezpośrednia zamiana.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Base Weight</td>
               <td class="col-pxr">Diffuse Gain</td>
-              <td>Direct swap.</td>
+              <td><span lang="en">Direct swap.</span><span lang="pl">Bezpośrednia zamiana.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Diffuse Roughness</td>
               <td class="col-pxr">Diffuse Roughness</td>
-              <td>Same idea: a flatter, more "powdery" diffuse response at higher values.</td>
+              <td><span lang="en">Same idea: a flatter, more "powdery" diffuse response at higher values.</span><span lang="pl">Ta sama idea: płaska, bardziej „pudrowa" odpowiedź diffuse przy wyższych wartościach.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Specular Color</td>
               <td class="col-pxr">Specular Face Color / Edge Color</td>
-              <td>PxrSurface splits specular color into face-on vs. grazing-angle color.</td>
+              <td><span lang="en">PxrSurface splits specular color into face-on vs. grazing-angle color.</span><span lang="pl">PxrSurface dzieli kolor specular na kolor patrząc wprost i pod kątem ślizgowym.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Specular Roughness</td>
               <td class="col-pxr">Specular Roughness</td>
-              <td>Same idea, values feel similar in practice.</td>
+              <td><span lang="en">Same idea, values feel similar in practice.</span><span lang="pl">Ta sama idea, w praktyce wartości czują się podobnie.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Specular IOR</td>
               <td class="col-pxr">Refraction Index <code>specularIor</code></td>
-              <td>Only used if you switch Fresnel Mode to Physical — see below. Note it's a <em>color</em> in PxrSurface, not a single float.</td>
+              <td><span lang="en">Only used if you switch Fresnel Mode to Physical — see below. Note it's a <em>color</em> in PxrSurface, not a single float.</span><span lang="pl">Używane tylko gdy przełączysz Fresnel Mode na Physical — patrz niżej. W PxrSurface to <em>kolor</em>, nie pojedyncza liczba.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Metalness</td>
-              <td class="col-pxr"><em>No direct equivalent</em></td>
-              <td>Achieved via Specular Edge/Face Color instead. Biggest conceptual jump — see below.</td>
+              <td class="col-pxr"><em><span lang="en">No direct equivalent</span><span lang="pl">brak bezpośredniego odpowiednika</span></em></td>
+              <td><span lang="en">Achieved via Specular Edge/Face Color instead. Biggest conceptual jump — see below.</span><span lang="pl">Osiągane zamiast tego przez Specular Edge/Face Color. Największy skok koncepcyjny — patrz niżej.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Specular Anisotropy</td>
               <td class="col-pxr">Anisotropy <code>specularAnisotropy</code></td>
-              <td>Same meaning, wider range: Arnold is 0→1, PxrSurface is −1→1. Circular at 0 in both.</td>
+              <td><span lang="en">Same meaning, wider range: Arnold is 0→1, PxrSurface is −1→1. Circular at 0 in both.</span><span lang="pl">To samo znaczenie, szerszy zakres: Arnold to 0→1, PxrSurface to −1→1. W obu okrągłe przy 0.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Specular Rotation</td>
               <td class="col-pxr">Shading Tangent <code>specularAnisotropyDirection</code></td>
-              <td>No slider equivalent. PxrSurface only accepts a <em>connection</em> here, not a typed value.</td>
+              <td><span lang="en">No slider equivalent. PxrSurface only accepts a <em>connection</em> here, not a typed value.</span><span lang="pl">Brak odpowiednika w postaci suwaka. PxrSurface akceptuje tu tylko <em>połączenie</em>, nie wpisaną wartość.</span></td>
             </tr>
             <tr>
-              <td class="col-arnold"><em>Always GGX</em></td>
+              <td class="col-arnold"><em><span lang="en">Always GGX</span><span lang="pl">Zawsze GGX</span></em></td>
               <td class="col-pxr">Specular Model <code>specularModelType</code></td>
-              <td>PxrSurface lets you pick Beckmann or GGX, and defaults to Beckmann. Switch it to GGX to match Arnold.</td>
+              <td><span lang="en">PxrSurface lets you pick Beckmann or GGX, and defaults to Beckmann. Switch it to GGX to match Arnold.</span><span lang="pl">PxrSurface pozwala wybrać Beckmann lub GGX, domyślnie Beckmann. Przełącz na GGX, by dopasować do Arnolda.</span></td>
             </tr>
             <tr>
-              <td class="col-arnold"><em>No equivalent</em></td>
+              <td class="col-arnold"><em><span lang="en">No equivalent</span><span lang="pl">brak odpowiednika</span></em></td>
               <td class="col-pxr">Rough Specular</td>
-              <td>A whole second specular lobe PxrSurface has and Arnold doesn't. Leave it off when converting.</td>
+              <td><span lang="en">A whole second specular lobe PxrSurface has and Arnold doesn't. Leave it off when converting.</span><span lang="pl">Cały drugi płat specular, który ma PxrSurface, a Arnold nie. Zostaw wyłączony przy konwersji.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Coat</td>
               <td class="col-pxr">Clearcoat</td>
-              <td>Same purpose, own Face/Edge Color and roughness.</td>
+              <td><span lang="en">Same purpose, own Face/Edge Color and roughness.</span><span lang="pl">To samo przeznaczenie, własny Face/Edge Color i roughness.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Sheen / Sheen Color</td>
               <td class="col-pxr">Fuzz Gain / Fuzz Color</td>
-              <td>Same purpose: cloth, dust, velvet edge glow.</td>
+              <td><span lang="en">Same purpose: cloth, dust, velvet edge glow.</span><span lang="pl">To samo przeznaczenie: poświata na krawędzi tkaniny, kurzu, aksamitu.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Sheen Roughness</td>
               <td class="col-pxr">Fuzz Cone Angle</td>
-              <td>Not a roughness at all — an angle in degrees. Pixar's own converter uses Cone Angle = 32 × Sheen Roughness.</td>
+              <td><span lang="en">Not a roughness at all — an angle in degrees. Pixar's own converter uses Cone Angle = 32 × Sheen Roughness.</span><span lang="pl">To wcale nie roughness — kąt w stopniach. Konwerter Pixara sam używa Cone Angle = 32 × Sheen Roughness.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Subsurface / Subsurface Color</td>
               <td class="col-pxr">Subsurface Gain / Color</td>
-              <td>Direct swap.</td>
+              <td><span lang="en">Direct swap.</span><span lang="pl">Bezpośrednia zamiana.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Subsurface Radius</td>
               <td class="col-pxr">Mean Free Path Color <code>subsurfaceDmfpColor</code></td>
-              <td>Radius becomes a <em>color</em>, not a distance. Catches people out.</td>
+              <td><span lang="en">Radius becomes a <em>color</em>, not a distance. Catches people out.</span><span lang="pl">Radius staje się <em>kolorem</em>, nie odległością. Ludzie się na tym łapią.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Subsurface Scale</td>
               <td class="col-pxr">Mean Free Path Distance <code>subsurfaceDmfp</code></td>
-              <td>Scale becomes the distance — then multiplied again by Unit Length, which Arnold has no equivalent for.</td>
+              <td><span lang="en">Scale becomes the distance — then multiplied again by Unit Length, which Arnold has no equivalent for.</span><span lang="pl">Scale staje się odległością — potem mnożoną jeszcze przez Unit Length, dla którego Arnold nie ma odpowiednika.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Subsurface Type</td>
               <td class="col-pxr">Subsurface Model <code>subsurfaceType</code></td>
-              <td>Six models in PxrSurface vs two in Arnold — see below.</td>
+              <td><span lang="en">Six models in PxrSurface vs two in Arnold — see below.</span><span lang="pl">Sześć modeli w PxrSurface kontra dwa w Arnoldzie — patrz niżej.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Emission / Emission Color</td>
               <td class="col-pxr">Glow Gain / Glow Color</td>
-              <td>Direct swap, just renamed.</td>
+              <td><span lang="en">Direct swap, just renamed.</span><span lang="pl">Bezpośrednia zamiana, po prostu zmieniona nazwa.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Transmission</td>
               <td class="col-pxr">Reflection Gain <em>and</em> Refraction Gain</td>
-              <td>One Arnold slider becomes two PxrSurface gains. Set both.</td>
+              <td><span lang="en">One Arnold slider becomes two PxrSurface gains. Set both.</span><span lang="pl">Jeden suwak Arnolda staje się dwoma gainami PxrSurface. Ustaw oba.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Transmission Color</td>
               <td class="col-pxr">Refraction Color</td>
-              <td>Direct swap — as long as Transmission Depth is 0.</td>
+              <td><span lang="en">Direct swap — as long as Transmission Depth is 0.</span><span lang="pl">Bezpośrednia zamiana — o ile Transmission Depth wynosi 0.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Transmission Depth</td>
               <td class="col-pxr">Interior → Extinction</td>
-              <td>Depth is converted into an extinction coefficient by Beer's law, not copied across.</td>
+              <td><span lang="en">Depth is converted into an extinction coefficient by Beer's law, not copied across.</span><span lang="pl">Depth jest przeliczane na współczynnik ekstynkcji prawem Beera, nie kopiowane wprost.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Thin Walled</td>
               <td class="col-pxr">Glass → Thin <code>thinGlass</code></td>
-              <td>Direct swap.</td>
+              <td><span lang="en">Direct swap.</span><span lang="pl">Bezpośrednia zamiana.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Opacity <em>(RGB)</em></td>
-              <td class="col-pxr">Presence <em>(float)</em></td>
-              <td>Colored opacity has nowhere to go — PxrSurface takes one number, and it wants 0 or 1.</td>
+              <td class="col-pxr">Presence <em><span lang="en">(float)</span><span lang="pl">(liczba)</span></em></td>
+              <td><span lang="en">Colored opacity has nowhere to go — PxrSurface takes one number, and it wants 0 or 1.</span><span lang="pl">Kolorowa opacity nie ma dokąd pójść — PxrSurface przyjmuje jedną liczbę i chce 0 albo 1.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Normal / Bump</td>
               <td class="col-pxr">Bump <code>bumpNormal</code></td>
-              <td>Plus a separate Bump input on every single lobe — see below.</td>
+              <td><span lang="en">Plus a separate Bump input on every single lobe — see below.</span><span lang="pl">Plus osobne wejście Bump na każdym pojedynczym płacie — patrz niżej.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Coat Normal</td>
               <td class="col-pxr">Clearcoat → Bump <code>clearcoatBumpNormal</code></td>
-              <td>Direct swap, and one of seven per-lobe bump inputs.</td>
+              <td><span lang="en">Direct swap, and one of seven per-lobe bump inputs.</span><span lang="pl">Bezpośrednia zamiana, jedno z siedmiu wejść bump per płat.</span></td>
             </tr>
             <tr>
               <td class="col-arnold">Thin Film Thickness / IOR</td>
               <td class="col-pxr">Iridescence (Physical mode)</td>
-              <td>Both in nanometres. PxrSurface also offers an Artistic two-color mode Arnold doesn't have.</td>
+              <td><span lang="en">Both in nanometres. PxrSurface also offers an Artistic two-color mode Arnold doesn't have.</span><span lang="pl">Oba w nanometrach. PxrSurface oferuje też tryb Artistic z dwoma kolorami, którego Arnold nie ma.</span></td>
             </tr>
           </tbody>
         </table>

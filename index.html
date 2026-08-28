@@ -1,15 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shader Migration Guides</title>
+<title data-title-pl="Przewodniki migracji shaderów">Shader Migration Guides</title>
 <meta name="description" content="Plain-language guides for artists moving between shading models: AiStandardSurface to PxrSurface, and more.">
 <link rel="stylesheet" href="assets/css/style.css">
+<script>
+/* Set the language before first paint so a Polish reader never sees a flash
+   of English. i18n.js repeats this once modules load. */
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
 </head>
 <body>
 
-<nav class="topnav">
+<nav class="topnav topnav--i18n">
   <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
   <div class="topnav__links">
     <a href="index.html" class="active">Home</a>
@@ -20,37 +30,54 @@
     <a href="aniso.html">Anisotropy</a>
     <a href="fuzz.html">Fuzz</a>
   </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
 </nav>
 
 <header class="hero">
-  <p class="section-kicker">For artists, not engineers</p>
-  <h1>Moving between shaders, without losing your look.</h1>
-  <p class="lead">
+  <p class="section-kicker"><span lang="en">For artists, not engineers</span><span lang="pl">Dla artystów, nie inżynierów</span></p>
+  <h1><span lang="en">Moving between shaders, without losing your look.</span><span lang="pl">Zmiana shadera bez utraty looku.</span></h1>
+  <p class="lead" lang="en">
     These guides translate one shading model into another using plain language and
     analogies — no math, no code. If you already have an intuition for lighting a
     surface in one renderer, you already have most of what you need for the next one.
+  </p>
+  <p class="lead" lang="pl">
+    Te przewodniki tłumaczą jeden model shadingu na drugi prostym językiem i za
+    pomocą analogii — bez matematyki, bez kodu. Jeśli masz już wyczucie oświetlania
+    powierzchni w jednym rendererze, masz już większość tego, czego potrzebujesz do
+    następnego.
   </p>
 </header>
 
 <main class="page">
   <div class="card-grid">
     <div class="card">
-      <span class="badge">Available now</span>
+      <span class="badge"><span lang="en">Available now</span><span lang="pl">Dostępne teraz</span></span>
       <h3>AiStandardSurface → PxrSurface</h3>
-      <p class="muted">
+      <p class="muted" lang="en">
         A parameter-by-parameter walkthrough for artists moving from Arnold's
         AiStandardSurface to RenderMan's PxrSurface — what each control is
         called on the other side, what changes conceptually, and the
         gotchas that trip people up first. Now with live Fresnel, metalness,
         thin-film and absorption widgets built in.
       </p>
-      <p><a href="guide.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        Przewodnik parametr po parametrze dla artystów przechodzących z
+        AiStandardSurface Arnolda na PxrSurface RenderMana — jak nazywa się dana
+        kontrolka po drugiej stronie, co zmienia się koncepcyjnie, i pułapki, w
+        które ludzie wpadają najpierw. Teraz z żywymi widgetami Fresnela,
+        metaliczności, cienkiej warstwy i absorpcji.
+      </p>
+      <p><a href="guide.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
     <div class="card">
-      <span class="badge">Available now</span>
-      <h3>Subsurface scattering</h3>
-      <p class="muted">
+      <span class="badge"><span lang="en">Available now</span><span lang="pl">Dostępne teraz</span></span>
+      <h3><span lang="en">Subsurface scattering</span><span lang="pl">Subsurface scattering</span></h3>
+      <p class="muted" lang="en">
         A deep dive on the one layer that behaves unlike all the others,
         because it's measured in distances rather than weights: what a mean
         free path is, why Radius and DMFP look unrelated but aren't, the Unit
@@ -58,13 +85,22 @@
         scattering model — with a random-walk visualiser that makes mean free
         path something you can watch rather than just read about.
       </p>
-      <p><a href="sss.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        Dogłębna analiza jedynej warstwy, która zachowuje się inaczej niż
+        wszystkie pozostałe, bo mierzy się ją w odległościach, a nie wagach:
+        czym jest mean free path (średnia droga swobodna), dlaczego Radius i
+        DMFP wyglądają na niepowiązane, choć nie są, mnożnik Unit Length, dla
+        którego Arnold nie ma odpowiednika, i jak wybrać model rozpraszania —
+        z wizualizacją błądzenia losowego, dzięki której mean free path można
+        zobaczyć, a nie tylko o niej przeczytać.
+      </p>
+      <p><a href="sss.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
     <div class="card">
-      <span class="badge">Available now</span>
+      <span class="badge"><span lang="en">Available now</span><span lang="pl">Dostępne teraz</span></span>
       <h3>PxrSurface vs Lama</h3>
-      <p class="muted">
+      <p class="muted" lang="en">
         RenderMan gives you two ways to build a material: PxrSurface, one node
         with every layer already in it, and MaterialX Lama, a set of
         single-purpose nodes you wire together. What each one is good at, how
@@ -72,48 +108,74 @@
         including a light-budget widget showing exactly how LamaAdd loses
         energy conservation.
       </p>
-      <p><a href="lama.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        RenderMan daje dwa sposoby budowania materiału: PxrSurface, jeden węzeł
+        z każdą warstwą już w środku, i MaterialX Lama, zestaw
+        jednofunkcyjnych węzłów, które łączysz sam. W czym każdy z nich jest
+        dobry, jak elementy mapują się na siebie nawzajem i jak rozpoznać,
+        czego wymaga dane zadanie — łącznie z widgetem budżetu światła
+        pokazującym dokładnie, jak LamaAdd traci zachowanie energii.
+      </p>
+      <p><a href="lama.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
     <div class="card">
       <span class="badge">Interactive · EN / PL</span>
       <h3>Beckmann vs GGX</h3>
-      <p class="muted">
+      <p class="muted" lang="en">
         Everyone knows to switch PxrSurface's specular model to match Arnold.
         Far fewer can say what actually changes — it isn't the size of the
         highlight, it's the faint tail outside it. With live spheres you can
         light and expose yourself.
       </p>
-      <p><a href="spec.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        Każdy wie, że trzeba przełączyć model odbicia PxrSurface, by dopasować
+        go do Arnolda. Znacznie mniej osób potrafi powiedzieć, co się właściwie
+        zmienia — nie chodzi o wielkość rozbłysku, tylko o słaby ogon poza nim.
+        Dzięki żywym kulom możesz sam ustawić światło i ekspozycję.
+      </p>
+      <p><a href="spec.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
     <div class="card">
       <span class="badge">Interactive · EN / PL</span>
       <h3>Specular Rotation vs Shading Tangent</h3>
-      <p class="muted">
+      <p class="muted" lang="en">
         Why Arnold gives you an angle for anisotropy and PxrSurface gives you a
         vector — what each can and cannot express, why re-doing your UVs can
         rotate your highlights, and why underneath the two are the same
         mechanism.
       </p>
-      <p><a href="aniso.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        Dlaczego Arnold daje ci kąt dla anizotropii, a PxrSurface wektor — co
+        każde z nich potrafi wyrazić, a co nie, dlaczego przerobienie UV
+        potrafi obrócić twoje rozbłyski, i dlaczego pod spodem to ta sama
+        maszyneria.
+      </p>
+      <p><a href="aniso.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
     <div class="card">
       <span class="badge">Interactive · EN / PL</span>
-      <h3>Why fuzz has a cone angle</h3>
-      <p class="muted">
+      <h3><span lang="en">Why fuzz has a cone angle</span><span lang="pl">Dlaczego fuzz ma kąt stożka</span></h3>
+      <p class="muted" lang="en">
         Every other softness control is called roughness; PxrSurface's fuzz
         asks for degrees. That's not a naming quirk — the fuzz lobe has no
         mirror direction for a roughness to widen, and Arnold's sheen is a
         different model rather than the same one in other units.
       </p>
-      <p><a href="fuzz.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        Każda inna kontrolka miękkości nazywa się Roughness; fuzz w PxrSurface
+        prosi o stopnie. To nie jest dziwactwo nazewnicze — płat fuzzu nie ma
+        kierunku lustrzanego, który Roughness mogłaby rozszerzać, a sheen
+        Arnolda to inny model, a nie ten sam w innych jednostkach.
+      </p>
+      <p><a href="fuzz.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
   </div>
 
-  <h2>How to use these guides</h2>
-  <p>
+  <h2><span lang="en">How to use these guides</span><span lang="pl">Jak korzystać z tych przewodników</span></h2>
+  <p lang="en">
     Each guide opens with the mental model — the one or two ideas that make
     everything else make sense — followed by a quick-reference table for
     looking up a single control fast. After that it goes group by group
@@ -122,27 +184,53 @@
     expect. You don't need to read them front to back; jump to the section you
     need.
   </p>
-  <p>
+  <p lang="pl">
+    Każdy przewodnik zaczyna się od modelu mentalnego — jednej lub dwóch idei,
+    które sprawiają, że reszta ma sens — a potem idzie tabela szybkiego
+    odniesienia do szybkiego wyszukania pojedynczej kontrolki. Dalej przechodzi
+    grupa po grupie przez kontrolki, z wyjaśnieniem prostym językiem,
+    analogią z realnego świata i dymkiem tam, gdzie coś zachowuje się inaczej,
+    niż byś się spodziewał. Nie trzeba czytać ich od deski do deski — przejdź
+    od razu do potrzebnej sekcji.
+  </p>
+  <p lang="en">
     Parameter names, defaults and conversion factors are checked against the
     actual shader definitions rather than written from memory, so the numbers
     are safe to act on — though it's always worth a sanity check against the
     versions installed in your own pipeline.
   </p>
-  <p>
+  <p lang="pl">
+    Nazwy parametrów, wartości domyślne i współczynniki konwersji są sprawdzane
+    względem faktycznych definicji shaderów, a nie pisane z pamięci, więc te
+    liczby są bezpieczne do użycia — choć zawsze warto je zweryfikować względem
+    wersji zainstalowanych w twoim własnym pipeline.
+  </p>
+  <p lang="en">
     Most guides carry interactive widgets — live spheres, curves and diagrams
     you can drag. They compute the real maths in your browser, so they are good
     for building intuition about how a control behaves, but they are not a
     substitute for a test render in your own scene.
   </p>
+  <p lang="pl">
+    Większość przewodników zawiera interaktywne widgety — żywe kule, krzywe i
+    diagramy, które można przeciągać. Liczą prawdziwą matematykę w twojej
+    przeglądarce, więc dobrze budują intuicję, jak zachowuje się dana
+    kontrolka, ale nie zastępują testowego renderu we własnej scenie.
+  </p>
 </main>
 
 <footer>
-  <p>
+  <p lang="en">
     Written for lookdev and lighting artists switching render engines. No prior
     shader-writing knowledge assumed.
   </p>
-  <p class="muted">Last updated: 27 August 2026.</p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 27 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 27 sierpnia 2026.</span></p>
 </footer>
 
+<script type="module" src="assets/js/i18n.js"></script>
 </body>
 </html>
