@@ -1304,6 +1304,13 @@
         <strong>Glow Color</strong>. Values port over unchanged, and both
         default to off.
       </p>
+      <p lang="pl">
+        Podział jest taki sam po obu stronach: gain mówiący, jak mocno, i
+        kolor mówiący, jaki kolor. <strong>Emission</strong> →
+        <strong>Glow Gain</strong>, <strong>Emission Color</strong> →
+        <strong>Glow Color</strong>. Wartości przenoszą się bez zmian i oba
+        domyślnie są wyłączone.
+      </p>
       <p class="muted" lang="en">
         Worth remembering for both shaders: this makes the surface <em>look</em>
         bright, but it doesn't efficiently light the rest of the scene the way
@@ -1587,6 +1594,13 @@
           PxrSurface you put the scratch bump on Clearcoat only and leave
           Diffuse flat, which is what's physically happening.
         </p>
+        <p lang="pl">
+          Maska samochodu z porysowanym lakierem. Rysy są w powłoce
+          (clearcoat), nie w farbie pod spodem — farba jest wciąż idealnie
+          gładka. W Arnoldzie udajesz to jedną wspólną normalną i masz
+          nadzieję. W PxrSurface kładziesz bump z rysami tylko na Clearcoat i
+          zostawiasz Diffuse płaski, co jest tym, co fizycznie się dzieje.
+        </p>
       </div>
 
       <h3><span lang="en">The part that catches people</span><span lang="pl">Część, która ludzi łapie</span></h3>
@@ -1761,29 +1775,46 @@
     </section>
 
     <section id="iridescence">
-      <p class="section-kicker">Optional layer</p>
-      <h2>Iridescence &amp; thin film</h2>
-      <p>
+      <p class="section-kicker"><span lang="en">Optional layer</span><span lang="pl">Warstwa opcjonalna</span></p>
+      <h2><span lang="en">Iridescence &amp; thin film</span><span lang="pl">Iridescence i cienka warstwa</span></h2>
+      <p lang="en">
         Arnold's <strong>Thin Film Thickness</strong> and
         <strong>Thin Film IOR</strong> become PxrSurface's
         <strong>Iridescence</strong> section. Both produce the same effect:
         color that shifts as the surface turns, coming from a film too thin to
         see.
       </p>
+      <p lang="pl">
+        <strong>Thin Film Thickness</strong> i <strong>Thin Film IOR</strong>
+        Arnolda stają się sekcją <strong>Iridescence</strong> PxrSurface. Oba
+        dają ten sam efekt: kolor zmieniający się wraz z obrotem
+        powierzchni, pochodzący z warstwy zbyt cienkiej, by ją zobaczyć.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           A film of oil on a wet road, or a soap bubble just before it pops.
           The rainbow isn't pigment — it's an extremely thin transparent layer
           where light reflecting off the top and off the bottom interferes with
           itself, and which colors survive depends on the angle you're standing
           at.
         </p>
+        <p lang="pl">
+          Warstwa oleju na mokrej drodze albo bańka mydlana tuż przed
+          pęknięciem. Tęcza to nie pigment — to niezwykle cienka
+          przezroczysta warstwa, gdzie światło odbite od góry i od dołu
+          interferuje ze sobą, a to, które kolory przetrwają, zależy od kąta,
+          pod jakim stoisz.
+        </p>
       </div>
-      <p>
+      <p lang="en">
         PxrSurface offers two ways in, under <strong>Iridescence Mode</strong>:
       </p>
-      <ul>
+      <p lang="pl">
+        PxrSurface oferuje dwa sposoby podejścia, pod
+        <strong>Iridescence Mode</strong>:
+      </p>
+      <ul lang="en">
         <li>
           <strong>Physical</strong> — you give it a
           <strong>Thin Film Thickness</strong> in nanometres, exactly as in
@@ -1796,9 +1827,22 @@
           value until you switch modes.
         </li>
       </ul>
+      <ul lang="pl">
+        <li>
+          <strong>Physical</strong> — podajesz <strong>Thin Film
+          Thickness</strong> w nanometrach, dokładnie jak w Arnoldzie. Tego
+          trybu używaj przy konwersji.
+        </li>
+        <li>
+          <strong>Artistic</strong> — wybierasz dwa kolory i pozwalasz
+          shaderowi przechodzić między nimi. Nie ma odpowiednika w Arnoldzie,
+          i to jest domyślny tryb, więc przekonwertowany materiał nie odczyta
+          twojej wartości grubości, dopóki nie przełączysz trybu.
+        </li>
+      </ul>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           Both shaders measure thickness in nanometres, so the number ports
           directly — but switch <strong>Iridescence Mode</strong> to
           <strong>Physical</strong> first, or the thickness field is ignored
@@ -1807,15 +1851,30 @@
           material that arrives faintly rainbow-tinted for no reason is usually
           this.
         </p>
+        <p lang="pl">
+          Oba shadery mierzą grubość w nanometrach, więc liczba przenosi się
+          bezpośrednio — ale najpierw przełącz <strong>Iridescence
+          Mode</strong> na <strong>Physical</strong>, bo inaczej pole
+          grubości jest ignorowane (jest ukryte w trybie Artistic). Domyślna
+          grubość PxrSurface to 800 nm, co jest widocznym efektem; Arnolda to
+          0, czyli żadnego. Materiał, który przychodzi lekko zabarwiony
+          tęczą bez powodu, to zwykle właśnie to.
+        </p>
       </div>
 
       <div class="viz" id="viz-thinfilm">
         <div class="viz__head">
-          <p class="viz__title">Thickness and angle, together</p>
-          <p class="viz__sub">
+          <p class="viz__title"><span lang="en">Thickness and angle, together</span><span lang="pl">Grubość i kąt razem</span></p>
+          <p class="viz__sub" lang="en">
             The field below is every combination: thickness across, viewing
             angle down. Read a single column and you have the colour sweep a
             film of that thickness produces as the surface turns away from you.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Pole poniżej to każda kombinacja: grubość w poziomie, kąt
+            patrzenia w pionie. Odczytaj jedną kolumnę, a dostaniesz zakres
+            kolorów, jaki warstwa tej grubości daje, gdy powierzchnia odwraca
+            się od ciebie.
           </p>
         </div>
         <div class="viz__stage viz__stage--split">
@@ -1838,44 +1897,57 @@
             <input type="range" id="fmIor" min="1.05" max="2.5" step="0.01" value="1.4" data-fmt="2">
           </div>
           <div class="ctl ctl--seg">
-            <div class="ctl__label"><span>Jump to</span></div>
+            <div class="ctl__label"><span lang="en">Jump to</span><span lang="pl">Przejdź do</span></div>
             <div class="seg" id="fmPreset" data-value="pxr">
-              <button type="button" data-val="arnold">Arnold default (0)</button>
-              <button type="button" data-val="pxr" class="is-active">PxrSurface default (800)</button>
+              <button type="button" data-val="arnold"><span lang="en">Arnold default (0)</span><span lang="pl">Domyślnie Arnold (0)</span></button>
+              <button type="button" data-val="pxr" class="is-active"><span lang="en">PxrSurface default (800)</span><span lang="pl">Domyślnie PxrSurface (800)</span></button>
             </div>
           </div>
         </div>
         <div class="readout" id="film-readout"></div>
         <div class="viz__note">
-          <p>
+          <p lang="en">
             Click between the two defaults to see the problem the callout above
             describes: Arnold's 0 is a flat, colourless column, and
             PxrSurface's 800 nm is a strong green-to-magenta sweep. Nothing in
             a converted material asks for that — it is simply what the field
             was already set to.
           </p>
+          <p lang="pl">
+            Kliknij między dwoma defaultami, by zobaczyć problem opisany w
+            dymku powyżej: 0 Arnolda to płaska, bezbarwna kolumna, a 800 nm
+            PxrSurface to mocny zakres od zieleni do magenty. Nic w
+            przekonwertowanym materiale o to nie prosi — to po prostu to, na
+            co pole już było ustawione.
+          </p>
         </div>
       </div>
     </section>
 
     <section id="first-15">
-      <p class="section-kicker">Getting started</p>
-      <h2>Your first 15 minutes in PxrSurface</h2>
-      <p>
+      <p class="section-kicker"><span lang="en">Getting started</span><span lang="pl">Na dobry początek</span></p>
+      <h2><span lang="en">Your first 15 minutes in PxrSurface</span><span lang="pl">Twoje pierwsze 15 minut w PxrSurface</span></h2>
+      <p lang="en">
         Assign a fresh PxrSurface and it renders as a dark grey ball with no
         highlight at all. That's not a mistake — PxrSurface starts with almost
         everything switched off, where AiStandardSurface starts with a usable
         plastic. Knowing the defaults saves a lot of confusion.
+      </p>
+      <p lang="pl">
+        Przypisz świeży PxrSurface, a wyrenderuje się jako ciemnoszara kula bez
+        żadnego rozbłysku. To nie błąd — PxrSurface zaczyna z niemal
+        wszystkim wyłączonym, podczas gdy AiStandardSurface zaczyna od
+        użytecznego plastiku. Znajomość defaultów oszczędza dużo zamieszania.
       </p>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Control</th>
+              <th><span lang="en">Control</span><span lang="pl">Kontrolka</span></th>
               <th>AiStandardSurface</th>
               <th>PxrSurface</th>
-              <th>What it means in practice</th>
+              <th><span lang="en">What it means in practice</span><span lang="pl">Co to oznacza w praktyce</span></th>
             </tr>
           </thead>
           <tbody>
@@ -1883,73 +1955,78 @@
               <td>Base / Diffuse Color</td>
               <td class="col-arnold">0.8</td>
               <td class="col-pxr">0.18</td>
-              <td>A fresh PxrSurface is much darker. It's not lit wrong — it's mid-grey by design.</td>
+              <td><span lang="en">A fresh PxrSurface is much darker. It's not lit wrong — it's mid-grey by design.</span><span lang="pl">Świeży PxrSurface jest dużo ciemniejszy. Nie jest źle oświetlony — jest średnioszary z założenia.</span></td>
             </tr>
             <tr>
               <td>Specular</td>
-              <td class="col-arnold">weight 1, color white</td>
-              <td class="col-pxr">Face &amp; Edge Color both black</td>
-              <td>PxrSurface has <em>no specular at all</em> until you set a color. Nothing is broken.</td>
+              <td class="col-arnold"><span lang="en">weight 1, color white</span><span lang="pl">waga 1, kolor biały</span></td>
+              <td class="col-pxr"><span lang="en">Face &amp; Edge Color both black</span><span lang="pl">Face i Edge Color oba czarne</span></td>
+              <td><span lang="en">PxrSurface has <em>no specular at all</em> until you set a color. Nothing is broken.</span><span lang="pl">PxrSurface <em>w ogóle nie ma specular</em>, dopóki nie ustawisz koloru. Nic nie jest zepsute.</span></td>
             </tr>
             <tr>
               <td>Specular Model</td>
-              <td class="col-arnold">GGX (always)</td>
+              <td class="col-arnold"><span lang="en">GGX (always)</span><span lang="pl">GGX (zawsze)</span></td>
               <td class="col-pxr">Beckmann</td>
-              <td>Switch to GGX to match a ported look.</td>
+              <td><span lang="en">Switch to GGX to match a ported look.</span><span lang="pl">Przełącz na GGX, by dopasować przeniesiony look.</span></td>
             </tr>
             <tr>
               <td>Specular Roughness</td>
               <td class="col-arnold">0.2</td>
               <td class="col-pxr">0.2</td>
-              <td>Same number — but Arnold squares it internally, so identical values won't look identical.</td>
+              <td><span lang="en">Same number — but Arnold squares it internally, so identical values won't look identical.</span><span lang="pl">Ta sama liczba — ale Arnold podnosi ją wewnętrznie do kwadratu, więc identyczne wartości nie będą wyglądać identycznie.</span></td>
             </tr>
             <tr>
               <td>Fresnel / IOR</td>
               <td class="col-arnold">1.5</td>
-              <td class="col-pxr">1.5, Artistic mode</td>
-              <td>The IOR only does anything once you switch to Physical mode.</td>
+              <td class="col-pxr">1.5, <span lang="en">Artistic mode</span><span lang="pl">tryb Artistic</span></td>
+              <td><span lang="en">The IOR only does anything once you switch to Physical mode.</span><span lang="pl">IOR cokolwiek robi dopiero po przełączeniu na tryb Physical.</span></td>
             </tr>
             <tr>
               <td>Clearcoat Roughness</td>
               <td class="col-arnold">0.1</td>
               <td class="col-pxr">0.0</td>
-              <td>PxrSurface's coat is perfectly sharp by default — a mirror, easy to miss on a rough base.</td>
+              <td><span lang="en">PxrSurface's coat is perfectly sharp by default — a mirror, easy to miss on a rough base.</span><span lang="pl">Powłoka PxrSurface jest domyślnie idealnie ostra — lustro, łatwe do przeoczenia na chropowatej bazie.</span></td>
             </tr>
             <tr>
               <td>Subsurface Distance</td>
               <td class="col-arnold">Scale 1</td>
               <td class="col-pxr">Mean Free Path 10</td>
-              <td>Ten times further. Copy Radius across without fixing this and skin turns to wax.</td>
+              <td><span lang="en">Ten times further. Copy Radius across without fixing this and skin turns to wax.</span><span lang="pl">Dziesięć razy dalej. Skopiuj Radius bez poprawienia tego, a skóra zamieni się w wosk.</span></td>
             </tr>
             <tr>
-              <td>Fuzz / Sheen falloff</td>
+              <td><span lang="en">Fuzz / Sheen falloff</span><span lang="pl">Zanik Fuzz / Sheen</span></td>
               <td class="col-arnold">Roughness 0.3</td>
               <td class="col-pxr">Cone Angle 8°</td>
-              <td>Different unit entirely. Use 32 × Sheen Roughness.</td>
+              <td><span lang="en">Different unit entirely. Use 32 × Sheen Roughness.</span><span lang="pl">Zupełnie inna jednostka. Użyj 32 × Sheen Roughness.</span></td>
             </tr>
             <tr>
-              <td>Iridescence thickness</td>
-              <td class="col-arnold">0 nm (off)</td>
+              <td><span lang="en">Iridescence thickness</span><span lang="pl">Grubość Iridescence</span></td>
+              <td class="col-arnold"><span lang="en">0 nm (off)</span><span lang="pl">0 nm (wyłączone)</span></td>
               <td class="col-pxr">800 nm</td>
-              <td>Only active in Physical mode, but a real value sitting there waiting.</td>
+              <td><span lang="en">Only active in Physical mode, but a real value sitting there waiting.</span><span lang="pl">Aktywne tylko w trybie Physical, ale prawdziwa wartość już tam czeka.</span></td>
             </tr>
             <tr>
               <td>Presence / Opacity</td>
-              <td class="col-arnold">white (opaque)</td>
-              <td class="col-pxr">1 (opaque)</td>
-              <td>Same starting point, different type.</td>
+              <td class="col-arnold"><span lang="en">white (opaque)</span><span lang="pl">biały (nieprzezroczysty)</span></td>
+              <td class="col-pxr">1 <span lang="en">(opaque)</span><span lang="pl">(nieprzezroczysty)</span></td>
+              <td><span lang="en">Same starting point, different type.</span><span lang="pl">Ten sam punkt startowy, inny typ.</span></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <h3>The order to work in</h3>
-      <p>
+      <h3><span lang="en">The order to work in</span><span lang="pl">Kolejność pracy</span></h3>
+      <p lang="en">
         Layers sit on top of each other, so build from the bottom. Judging a
         highlight before the diffuse underneath it is right just means doing it
         twice.
       </p>
-      <ol class="steps">
+      <p lang="pl">
+        Warstwy leżą jedna na drugiej, więc buduj od dołu. Ocenianie
+        rozbłysku, zanim diffuse pod nim jest w porządku, oznacza po prostu
+        robienie tego dwa razy.
+      </p>
+      <ol class="steps" lang="en">
         <li>
           <strong>Diffuse first.</strong> Copy Base Color into Diffuse Color and
           Base Weight into Diffuse Gain. Look at it with no specular. If this
@@ -1980,9 +2057,41 @@
           inputs for when you actually want them.
         </li>
       </ol>
+      <ol class="steps" lang="pl">
+        <li>
+          <strong>Najpierw Diffuse.</strong> Skopiuj Base Color do Diffuse
+          Color i Base Weight do Diffuse Gain. Spójrz na to bez specular.
+          Jeśli to wygląda źle, nic powyżej cię nie uratuje.
+        </li>
+        <li>
+          <strong>Ustaw model specular na GGX</strong>, zarówno na Primary
+          Specular, jak i Clearcoat, zanim ocenisz jakikolwiek rozbłysk.
+        </li>
+        <li>
+          <strong>Daj specular kolor.</strong> Zaczyna czarny, czyli
+          wyłączony. Dla niemetali — niski neutralny Face Color i niemal
+          biały Edge Color. Dla metali — przesuń oba w stronę własnego koloru
+          metalu.
+        </li>
+        <li>
+          <strong>Teraz zapłać rachunek energetyczny.</strong> Jeśli to
+          metal, zbij Diffuse Gain do 0. Jeśli podniosłeś Subsurface, obniż
+          Diffuse Gain odpowiednio. Nic nie robi tego tutaj za ciebie.
+        </li>
+        <li>
+          <strong>Roughness.</strong> Arnold podnosi swoją roughness
+          wewnętrznie do kwadratu, a PxrSurface nie, więc traktuj starą
+          wartość jako punkt startowy, nie odpowiedź.
+        </li>
+        <li>
+          <strong>Powłoka, potem detal.</strong> Clearcoat, potem bump do
+          globalnego wejścia Bump, potem Presence dla wycięć. Zostaw wejścia
+          bump per-płat na później, gdy naprawdę ich zechcesz.
+        </li>
+      </ol>
 
-      <h3>Before you decide the renderer is lying</h3>
-      <ul>
+      <h3><span lang="en">Before you decide the renderer is lying</span><span lang="pl">Zanim uznasz, że renderer kłamie</span></h3>
+      <ul lang="en">
         <li>Is <strong>Specular Face Color</strong> still black? Then there is no specular.</li>
         <li>Is <strong>Specular Model</strong> still Beckmann? Then the highlight shape is not Arnold's.</li>
         <li>For a metal — is <strong>Diffuse Gain</strong> still above 0?</li>
@@ -1990,119 +2099,189 @@
         <li>For skin — is <strong>Mean Free Path Distance</strong> still sitting at 10?</li>
         <li>For displacement — is the <strong>displacement bound</strong> large enough?</li>
       </ul>
+      <ul lang="pl">
+        <li>Czy <strong>Specular Face Color</strong> jest wciąż czarny? Wtedy nie ma specular.</li>
+        <li>Czy <strong>Specular Model</strong> jest wciąż na Beckmann? Wtedy kształt rozbłysku nie jest jak w Arnoldzie.</li>
+        <li>Dla metalu — czy <strong>Diffuse Gain</strong> jest wciąż powyżej 0?</li>
+        <li>Dla szkła — czy ustawiłeś <strong>oba</strong>, Refraction Gain i Reflection Gain?</li>
+        <li>Dla skóry — czy <strong>Mean Free Path Distance</strong> wciąż siedzi na 10?</li>
+        <li>Dla displacement — czy <strong>displacement bound</strong> jest wystarczająco duży?</li>
+      </ul>
     </section>
 
     <section id="pitfalls">
-      <h2>Common pitfalls</h2>
+      <h2><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></h2>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "My metal looks like grey plastic"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"My metal looks like grey plastic"</span><span lang="pl">„Mój metal wygląda jak szary plastik"</span></div>
+        <p lang="en">
           You tinted Specular Face/Edge Color but forgot to lower Diffuse
           Gain. A visible diffuse layer under a metal reflection is almost
           always the culprit — see the Specular section above.
         </p>
-      </div>
-
-      <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "Skin/wax looks too solid, not soft"</div>
-        <p>
-          Subsurface values ported directly from Arnold's Radius/Scale rarely
-          hold up. Re-tune by eye rather than trusting the numbers.
+        <p lang="pl">
+          Zabarwiłeś Specular Face/Edge Color, ale zapomniałeś obniżyć
+          Diffuse Gain. Widoczna warstwa diffuse pod odbiciem metalu to
+          niemal zawsze przyczyna — patrz sekcja Specular wyżej.
         </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The clearcoat isn't visible"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"Skin/wax looks too solid, not soft"</span><span lang="pl">„Skóra/wosk wygląda zbyt solidnie, nie miękko"</span></div>
+        <p lang="en">
+          Subsurface values ported directly from Arnold's Radius/Scale rarely
+          hold up. Re-tune by eye rather than trusting the numbers.
+        </p>
+        <p lang="pl">
+          Wartości subsurface przeniesione wprost z Radius/Scale Arnolda
+          rzadko się sprawdzają. Przestrój na oko zamiast ufać liczbom.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The clearcoat isn't visible"</span><span lang="pl">„Clearcoat nie jest widoczny"</span></div>
+        <p lang="en">
           Check Clearcoat's own Roughness — it defaults to a very sharp,
           low-roughness look, so on a rough base material it can read as
           barely-there unless the coat itself is kept nearly smooth.
         </p>
+        <p lang="pl">
+          Sprawdź własny Roughness Clearcoat — domyślnie jest bardzo ostry,
+          o niskiej roughness, więc na chropowatym materiale bazowym może
+          czytać się jako ledwie obecny, o ile sama powłoka nie zostanie
+          niemal gładka.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "Colors look flatter than in Arnold"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"Colors look flatter than in Arnold"</span><span lang="pl">„Kolory wyglądają płasko w porównaniu z Arnoldem"</span></div>
+        <p lang="en">
           Double-check you're comparing Face Color (head-on) against Face
           Color, not against Arnold's single Specular Color — PxrSurface's
           two-color Fresnel model means a like-for-like comparison needs both
           Face and Edge Color set intentionally, not just one.
         </p>
+        <p lang="pl">
+          Sprawdź jeszcze raz, czy porównujesz Face Color (wprost) z Face
+          Color, a nie z pojedynczym Specular Color Arnolda — dwukolorowy
+          model Fresnela PxrSurface oznacza, że uczciwe porównanie wymaga
+          świadomego ustawienia zarówno Face, jak i Edge Color, nie tylko
+          jednego.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The highlight is the wrong shape at the same roughness"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The highlight is the wrong shape at the same roughness"</span><span lang="pl">„Rozbłysk ma zły kształt przy tej samej roughness"</span></div>
+        <p lang="en">
           PxrSurface defaults to the Beckmann specular model; Arnold is always
           GGX. Beckmann's highlight stops more abruptly, GGX keeps a soft tail.
           Switch <strong>Specular Model</strong> to GGX — and remember
           Clearcoat has its own separate one.
         </p>
+        <p lang="pl">
+          PxrSurface domyślnie stoi na modelu specular Beckmann; Arnold to
+          zawsze GGX. Rozbłysk Beckmanna kończy się bardziej gwałtownie, GGX
+          zachowuje miękki ogon. Przełącz <strong>Specular Model</strong> na
+          GGX — i pamiętaj, że Clearcoat ma własny, osobny.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The surface detail is only on part of the material"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The surface detail is only on part of the material"</span><span lang="pl">„Detal powierzchni jest tylko na części materiału"</span></div>
+        <p lang="en">
           PxrSurface has a bump input on every lobe, not just one for the whole
           shader. If you connected bump to Specular but not Diffuse, half the
           material is flat. When converting, use the global
           <strong>Bump</strong> in Globals and leave the per-lobe ones empty.
         </p>
+        <p lang="pl">
+          PxrSurface ma wejście bump na każdym płacie, nie jedno na cały
+          shader. Jeśli podłączyłeś bump do Specular, ale nie do Diffuse,
+          połowa materiału jest płaska. Przy konwersji użyj globalnego
+          <strong>Bump</strong> w Globals i zostaw te per-płat puste.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The leaf cards are noisy or have dark edges"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The leaf cards are noisy or have dark edges"</span><span lang="pl">„Karty liści są zaszumione albo mają ciemne krawędzie"</span></div>
+        <p lang="en">
           Presence expects 0 or 1, not values in between — anything parked
           halfway produces noise. And if your Arnold material relied on
           <em>colored</em> opacity, that information is gone: only the
           luminance survives. Colored see-through belongs in the Glass layer.
         </p>
+        <p lang="pl">
+          Presence oczekuje 0 albo 1, nie wartości pomiędzy — cokolwiek
+          zaparkowanego w połowie daje szum. A jeśli twój materiał z Arnolda
+          opierał się na <em>kolorowej</em> opacity, ta informacja przepadła:
+          przetrwa tylko luminancja. Kolorowa przezroczystość należy do
+          warstwy Glass.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The glass has no reflections in it"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The glass has no reflections in it"</span><span lang="pl">„Szkło nie ma w sobie żadnych odbić"</span></div>
+        <p lang="en">
           Arnold's single Transmission slider becomes two separate controls.
           Setting <strong>Refraction Gain</strong> without
           <strong>Reflection Gain</strong> gives you something you can see
           through that never catches the light. Set both to your old
           Transmission value.
         </p>
+        <p lang="pl">
+          Pojedynczy suwak Transmission Arnolda staje się dwoma osobnymi
+          kontrolkami. Ustawienie <strong>Refraction Gain</strong> bez
+          <strong>Reflection Gain</strong> daje coś, przez co widać, ale co
+          nigdy nie łapie światła. Ustaw oba na starą wartość Transmission.
+        </p>
       </div>
 
       <div class="callout callout--pitfall">
-        <div class="callout__title">⚠ "The displaced detail is flattened or missing"</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">"The displaced detail is flattened or missing"</span><span lang="pl">„Detal displacement jest spłaszczony albo go nie ma"</span></div>
+        <p lang="en">
           Not a shader problem. Displacement is a separate PxrDisplace node,
           and RenderMan clips it at the geometry's displacement bound. Too
           small a bound silently chops the detail off.
+        </p>
+        <p lang="pl">
+          To nie problem shadera. Displacement to osobny węzeł PxrDisplace, a
+          RenderMan obcina go na displacement bound geometrii. Zbyt mały
+          bound po cichu ucina detal.
         </p>
       </div>
     </section>
 
     <div class="card card--trailing">
-      <span class="badge">Next guide</span>
+      <span class="badge"><span lang="en">Next guide</span><span lang="pl">Następny przewodnik</span></span>
       <h3>PxrSurface vs Lama</h3>
-      <p class="muted">
+      <p class="muted" lang="en">
         PxrSurface isn't the only way to build a material in RenderMan.
         MaterialX Lama takes the opposite approach — small single-purpose nodes
         you wire together yourself. The companion guide covers when each one is
         the right tool.
       </p>
-      <p><a href="lama.html">Read the guide →</a></p>
+      <p class="muted" lang="pl">
+        PxrSurface to nie jedyny sposób budowania materiału w RenderManie.
+        MaterialX Lama przyjmuje odwrotne podejście — małe, jednofunkcyjne
+        węzły, które łączysz sam. Powiązany przewodnik omawia, kiedy które
+        jest właściwym narzędziem.
+      </p>
+      <p><a href="lama.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
     </div>
 
   </main>
 </div>
 
 <footer>
-  <p>
+  <p lang="en">
     Written for lookdev and lighting artists switching render engines. No prior
     shader-writing knowledge assumed.
   </p>
-  <p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
     Parameter names, defaults and conversion factors on this page were checked
     against the <strong>PxrSurface</strong> shader definition in RenderMan 27,
     the <strong>Autodesk Standard Surface</strong> specification, and Pixar's
@@ -2110,7 +2289,16 @@
     for Maya. Always sanity check against the version installed in your
     pipeline.
   </p>
-  <p class="muted">Last updated: 26 August 2026.</p>
+  <p lang="pl">
+    Nazwy parametrów, wartości domyślne i współczynniki konwersji na tej
+    stronie zostały sprawdzone względem definicji shadera
+    <strong>PxrSurface</strong> w RenderMan 27, specyfikacji
+    <strong>Autodesk Standard Surface</strong> i własnego shadera konwersji
+    Standard Surface → PxrSurface Pixara dostarczanego z RenderManem dla
+    Maya. Zawsze sprawdź to względem wersji zainstalowanej w twoim
+    pipeline.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 26 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 26 sierpnia 2026.</span></p>
 </footer>
 
 <script type="module" src="assets/js/guide.js"></script>
