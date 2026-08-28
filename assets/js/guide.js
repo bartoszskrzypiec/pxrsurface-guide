@@ -114,6 +114,14 @@ const fresnelBall = createShaderball(document.getElementById('fresnel-ball'), {
   lightPower: 45,
   diffuse: 0.12,
   diffColor: [0.2, 0.2, 0.22],
+  // Edge Color only shows up at grazing angles *to the camera*, which is the
+  // sphere's silhouette - not inside the small light's own highlight, where
+  // the view-to-half-vector angle stays close to 0 and Fresnel sits near
+  // Face Color instead. Without something ambient to reflect at the rim,
+  // Edge Color = white has nothing to show through. Pushed well past the
+  // metalness widget's env strength because this one needs the rim to read
+  // clearly at a glance, not just be technically present.
+  envGain: 2.4,
 });
 
 const fresnelReadout = document.getElementById('fresnel-readout');
