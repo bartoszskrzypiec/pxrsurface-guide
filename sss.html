@@ -731,58 +731,64 @@
     </section>
 
     <section id="models">
-      <h2>Choosing a model</h2>
-      <p>
+      <h2><span lang="en">Choosing a model</span><span lang="pl">Wybór modelu</span></h2>
+      <p lang="en">
         Both shaders offer more than one way to compute all this. Arnold gives
         you three. PxrSurface gives you six. The defaults are not equivalent,
         and that mismatch does more damage than any single parameter.
+      </p>
+      <p lang="pl">
+        Oba shadery oferują więcej niż jeden sposób liczenia tego wszystkiego.
+        Arnold daje ci trzy. PxrSurface daje sześć. Defaulty nie są
+        równoważne, i to niedopasowanie robi więcej szkód niż jakikolwiek
+        pojedynczy parametr.
       </p>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>PxrSurface — Subsurface Model</th>
-              <th>What it computes</th>
-              <th>Closest Arnold type</th>
+              <th><span lang="en">PxrSurface — Subsurface Model</span><span lang="pl">PxrSurface — Subsurface Model</span></th>
+              <th><span lang="en">What it computes</span><span lang="pl">Co liczy</span></th>
+              <th><span lang="en">Closest Arnold type</span><span lang="pl">Najbliższy typ Arnolda</span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="col-pxr">Jensen Dipole <em>(default)</em></td>
-              <td>Diffusion only — the result of many bounces, approximated. Oldest and fastest.</td>
+              <td class="col-pxr">Jensen Dipole <em><span lang="en">(default)</span><span lang="pl">(domyślny)</span></em></td>
+              <td><span lang="en">Diffusion only — the result of many bounces, approximated. Oldest and fastest.</span><span lang="pl">Tylko dyfuzja — przybliżony wynik wielu odbić. Najstarszy i najszybszy.</span></td>
               <td class="col-arnold">diffusion</td>
             </tr>
             <tr>
               <td class="col-pxr">DEon Better Dipole</td>
-              <td>Diffusion only, with a better-behaved falloff than Jensen.</td>
+              <td><span lang="en">Diffusion only, with a better-behaved falloff than Jensen.</span><span lang="pl">Tylko dyfuzja, z lepiej zachowującym się zanikiem niż Jensen.</span></td>
               <td class="col-arnold">diffusion</td>
             </tr>
             <tr>
               <td class="col-pxr">Burley Normalized</td>
-              <td>Diffusion <strong>and</strong> single scattering.</td>
-              <td class="col-arnold">between diffusion and randomwalk</td>
+              <td><span lang="en">Diffusion <strong>and</strong> single scattering.</span><span lang="pl">Dyfuzja <strong>i</strong> pojedyncze rozproszenie.</span></td>
+              <td class="col-arnold"><span lang="en">between diffusion and randomwalk</span><span lang="pl">między diffusion a randomwalk</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Multiple Mean Free Paths</td>
-              <td>Three separate scattering ranges at once — see below.</td>
-              <td class="col-arnold"><em>no equivalent</em></td>
+              <td><span lang="en">Three separate scattering ranges at once — see below.</span><span lang="pl">Trzy osobne zakresy rozpraszania naraz — patrz niżej.</span></td>
+              <td class="col-arnold"><em><span lang="en">no equivalent</span><span lang="pl">brak odpowiednika</span></em></td>
             </tr>
             <tr>
               <td class="col-pxr">Exponential Path Traced</td>
-              <td>Actually traces light through the interior. Accounts for single and zero scatter events too.</td>
+              <td><span lang="en">Actually traces light through the interior. Accounts for single and zero scatter events too.</span><span lang="pl">Naprawdę śledzi światło przez wnętrze. Uwzględnia też zdarzenia pojedynczego i zerowego rozproszenia.</span></td>
               <td class="col-arnold">randomwalk</td>
             </tr>
             <tr>
               <td class="col-pxr">Non-Exponential Path Traced</td>
-              <td>As above, with a different distance distribution — often better on dense, detailed media.</td>
+              <td><span lang="en">As above, with a different distance distribution — often better on dense, detailed media.</span><span lang="pl">Jak wyżej, z innym rozkładem odległości — często lepszy na gęstych, szczegółowych materiałach.</span></td>
               <td class="col-arnold">randomwalk / randomwalk_v2</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <p>
+      <p lang="en">
         The gap that matters: <strong>Arnold defaults to
         <code>randomwalk</code></strong>, which brute-force traces the interior
         and has been Arnold's default for years — so almost every Arnold
@@ -790,19 +796,34 @@
         <strong>PxrSurface defaults to Jensen Dipole</strong>, which is the
         oldest and most approximate of the six.
       </p>
+      <p lang="pl">
+        Luka, która ma znaczenie: <strong>Arnold domyślnie ustawia
+        <code>randomwalk</code></strong>, który brute-force'em śledzi
+        wnętrze i jest domyślny w Arnoldzie od lat — więc niemal każdy
+        materiał subsurface z Arnolda, jaki kiedykolwiek dostaniesz, powstał
+        na nim. <strong>PxrSurface domyślnie ustawia Jensen Dipole</strong>,
+        który jest najstarszym i najbardziej przybliżonym z sześciu.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           A weather forecast versus standing outside. The forecast is fast and
           usually close enough. But ask it about one specific gust in one
           specific street and the approximation has nothing to say — you had to
           be there. Dipole models are the forecast; path traced models stand
           outside.
         </p>
+        <p lang="pl">
+          Prognoza pogody kontra stanie na zewnątrz. Prognoza jest szybka i
+          zwykle wystarczająco bliska. Ale zapytaj ją o jeden konkretny
+          podmuch na jednej konkretnej ulicy, a przybliżenie nie ma nic do
+          powiedzenia — trzeba było tam być. Modele dipolowe to prognoza;
+          modele path traced stoją na zewnątrz.
+        </p>
       </div>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           If your Arnold material used <code>randomwalk</code>, the honest
           equivalent is one of the <strong>Path Traced</strong> options, not the
           Jensen Dipole you'll find switched on when you open the shader. The
@@ -811,86 +832,130 @@
           eyelids. That's the usual reason converted skin looks fine on the
           cheek and rubbery at the edges.
         </p>
+        <p lang="pl">
+          Jeśli twój materiał z Arnolda używał <code>randomwalk</code>,
+          uczciwym odpowiednikiem jest jedna z opcji <strong>Path
+          Traced</strong>, nie Jensen Dipole, który znajdziesz włączony przy
+          otwarciu shadera. Przybliżenia trzymają się na grubych, zaokrąglonych
+          formach i rozpadają się dokładnie tam, gdzie zależy ci najbardziej —
+          na cienkiej geometrii jak uszy, nozdrza, palce i powieki. To zwykły
+          powód, dla którego przekonwertowana skóra wygląda dobrze na policzku,
+          a gumowato na krawędziach.
+        </p>
       </div>
       <div class="callout">
-        <div class="callout__title">⚠ One caveat about the distance</div>
-        <p>
+        <div class="callout__title">⚠ <span lang="en">One caveat about the distance</span><span lang="pl">Jedno zastrzeżenie co do odległości</span></div>
+        <p lang="en">
           Mean Free Path Distance is designed for the dipole models. Once you're
           in a Path Traced mode, RenderMan's own documentation advises against
           leaning on it — you drive the look from Subsurface Color and Mean Free
           Path Color instead. So switching model isn't just a quality dial; it
           changes which parameters you should be reaching for.
         </p>
+        <p lang="pl">
+          Mean Free Path Distance jest zaprojektowany dla modeli dipolowych.
+          Gdy tylko jesteś w trybie Path Traced, własna dokumentacja
+          RenderMana odradza poleganie na nim — look sterujesz zamiast tego z
+          Subsurface Color i Mean Free Path Color. Więc zmiana modelu to nie
+          tylko pokrętło jakości; zmienia, po które parametry powinieneś
+          sięgać.
+        </p>
       </div>
     </section>
 
     <section id="mmfp">
       <h2>Multiple Mean Free Paths</h2>
-      <p>
+      <p lang="en">
         This is the one PxrSurface mode with nothing resembling it in
         AiStandardSurface, and it's worth knowing about even if you never switch
         to it, because it explains a set of parameters that otherwise look like
         clutter.
       </p>
-      <p>
+      <p lang="pl">
+        To jedyny tryb PxrSurface, który nie ma niczego podobnego w
+        AiStandardSurface, i warto go znać, nawet jeśli nigdy się na niego
+        nie przełączysz, bo wyjaśnia zestaw parametrów, które inaczej
+        wyglądają na bałagan.
+      </p>
+      <p lang="en">
         Every other model gives you <em>one</em> mean free path, tinted per
         colour channel. Multiple Mean Free Paths gives you <strong>three
         complete sets</strong> — short, medium and long range — each with its own
         gain, its own colour and its own distance.
+      </p>
+      <p lang="pl">
+        Każdy inny model daje ci <em>jeden</em> mean free path, zabarwiony
+        per kanał koloru. Multiple Mean Free Paths daje ci <strong>trzy
+        kompletne zestawy</strong> — zakres krótki, średni i długi — każdy z
+        własnym gainem, własnym kolorem i własną odległością.
       </p>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Range</th>
+              <th><span lang="en">Range</span><span lang="pl">Zakres</span></th>
               <th>Gain</th>
               <th>Color</th>
-              <th>Distance</th>
+              <th><span lang="en">Distance</span><span lang="pl">Odległość</span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td class="col-pxr">Short</td>
+              <td class="col-pxr"><span lang="en">Short</span><span lang="pl">Krótki</span></td>
               <td>Short Gain — 0</td>
-              <td>(0.9, 0.9, 0.9) — near white</td>
+              <td>(0.9, 0.9, 0.9) — <span lang="en">near white</span><span lang="pl">niemal biały</span></td>
               <td>5</td>
             </tr>
             <tr>
-              <td class="col-pxr">Medium</td>
+              <td class="col-pxr"><span lang="en">Medium</span><span lang="pl">Średni</span></td>
               <td>Gain — 0</td>
-              <td>(0.830, 0.791, 0.753) — warm off-white</td>
+              <td>(0.830, 0.791, 0.753) — <span lang="en">warm off-white</span><span lang="pl">ciepły złamana biel</span></td>
               <td>10</td>
             </tr>
             <tr>
-              <td class="col-pxr">Long</td>
+              <td class="col-pxr"><span lang="en">Long</span><span lang="pl">Długi</span></td>
               <td>Long Gain — 0</td>
-              <td><strong>(0.8, 0, 0) — pure red</strong></td>
+              <td><strong>(0.8, 0, 0) — <span lang="en">pure red</span><span lang="pl">czysta czerwień</span></strong></td>
               <td>20</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <p>
+      <p lang="en">
         Read those defaults and the intent is unmistakable: a pale, tight
         scatter close to the surface; a warm mid-range one; and a deep red one
         travelling four times further. It's the classic three-layer skin model,
         pre-loaded.
       </p>
+      <p lang="pl">
+        Przeczytaj te defaulty, a intencja jest jednoznaczna: blade, ciasne
+        rozproszenie blisko powierzchni; ciepłe w średnim zakresie; i głęboko
+        czerwone, przebywające cztery razy dalej. To klasyczny trójwarstwowy
+        model skóry, wgrany fabrycznie.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           Skin is not one substance. There's a thin, pale outer layer that
           scatters light barely at all, a thicker warm layer below it, and blood
           deeper still. Light that only just dips in comes back nearly white;
           light that goes deep comes back red. One mean free path has to average
           all of that into a single answer. Three lets you say it properly.
         </p>
+        <p lang="pl">
+          Skóra to nie jedna substancja. Jest cienka, blada zewnętrzna
+          warstwa, która ledwie rozprasza światło, grubsza ciepła warstwa
+          pod nią i krew jeszcze głębiej. Światło, które ledwie zanurkuje,
+          wraca niemal białe; światło, które idzie głęboko, wraca czerwone.
+          Jeden mean free path musi uśrednić to wszystko do jednej
+          odpowiedzi. Trzy pozwalają powiedzieć to porządnie.
+        </p>
       </div>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           Two things change when you switch to this mode, and both surprise
           people. <strong>Mean Free Path Color is ignored entirely</strong> —
           the per-range colours replace it. And <strong>Subsurface Color becomes
@@ -899,21 +964,41 @@
           Color is now doing a narrower job than it was, and your ported Radius
           is doing no job at all.
         </p>
+        <p lang="pl">
+          Dwie rzeczy zmieniają się, gdy przełączysz się na ten tryb, i obie
+          zaskakują ludzi. <strong>Mean Free Path Color jest całkowicie
+          ignorowany</strong> — zastępują go kolory per zakres. A
+          <strong>Subsurface Color staje się konkretnie kolorem zakresu
+          średniego</strong>, zamiast kolorem całego płata. Więc wartość,
+          którą przeniosłeś z Subsurface Color Arnolda, robi teraz węższą
+          robotę niż wcześniej, a przeniesiony Radius nie robi żadnej.
+        </p>
       </div>
-      <p class="muted">
+      <p class="muted" lang="en">
         All three gains default to 0, so the mode does nothing until you feed
         it. That's a reasonable way to explore it: bring up Long Gain on its own
         against a backlit ear and you'll see immediately what the red channel is
         for.
       </p>
-    
+      <p class="muted" lang="pl">
+        Wszystkie trzy gainy domyślnie stoją na 0, więc tryb nic nie robi,
+        dopóki go nie nakarmisz. To rozsądny sposób, by go zbadać: podnieś
+        sam Long Gain na tle podświetlonego ucha, a od razu zobaczysz, do
+        czego służy czerwony kanał.
+      </p>
+
       <div class="viz" id="viz-mmfp">
         <div class="viz__head">
-          <p class="viz__title">Three lobes, one skin</p>
-          <p class="viz__sub">
+          <p class="viz__title"><span lang="en">Three lobes, one skin</span><span lang="pl">Trzy płaty, jedna skóra</span></p>
+          <p class="viz__sub" lang="en">
             Each range plotted separately, with their sum on top. Loaded with
             PxrSurface's own default colours and distances &mdash; pale and tight,
             warm and mid, red and deep.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Każdy zakres wykreślony osobno, z ich sumą na wierzchu. Wgrane z
+            własnymi domyślnymi kolorami i odległościami PxrSurface &mdash;
+            blady i ciasny, ciepły i średni, czerwony i głęboki.
           </p>
         </div>
         <div class="viz__stage viz__stage--split">
@@ -923,21 +1008,21 @@
         <div class="viz__controls" id="mmfp-ctl">
           <div class="ctl">
             <label class="ctl__label" for="mmShort">
-              <span>Short Gain &mdash; near white, distance 5</span>
+              <span>Short Gain &mdash; <span lang="en">near white, distance 5</span><span lang="pl">niemal biały, odległość 5</span></span>
               <span class="ctl__value" data-value-for="mmShort"></span>
             </label>
             <input type="range" id="mmShort" min="0" max="1" step="0.01" value="0.5" data-fmt="2">
           </div>
           <div class="ctl">
             <label class="ctl__label" for="mmMed">
-              <span>Gain &mdash; warm off-white, distance 10</span>
+              <span>Gain &mdash; <span lang="en">warm off-white, distance 10</span><span lang="pl">ciepła złamana biel, odległość 10</span></span>
               <span class="ctl__value" data-value-for="mmMed"></span>
             </label>
             <input type="range" id="mmMed" min="0" max="1" step="0.01" value="0.5" data-fmt="2">
           </div>
           <div class="ctl">
             <label class="ctl__label" for="mmLong">
-              <span>Long Gain &mdash; pure red, distance 20</span>
+              <span>Long Gain &mdash; <span lang="en">pure red, distance 20</span><span lang="pl">czysta czerwień, odległość 20</span></span>
               <span class="ctl__value" data-value-for="mmLong"></span>
             </label>
             <input type="range" id="mmLong" min="0" max="1" step="0.01" value="0.5" data-fmt="2">
@@ -945,7 +1030,7 @@
         </div>
         <div class="readout" id="mmfp-readout"></div>
         <div class="viz__note">
-          <p>
+          <p lang="en">
             Pull the long gain to zero and the deep red disappears &mdash; the slab
             goes waxy and dead. Pull the short gain down instead and it loses
             the pale surface sheen that makes skin look like skin rather than
@@ -953,20 +1038,34 @@
             these into a single answer, which is exactly why it can never
             quite get there.
           </p>
+          <p lang="pl">
+            Ściągnij long gain do zera, a głęboka czerwień znika &mdash; płyta
+            robi się woskowa i martwa. Ściągnij zamiast tego short gain, a
+            traci bladą powierzchniową poświatę, dzięki której skóra wygląda
+            jak skóra, a nie jak czerwona lampa. Jeden mean free path musi
+            uśrednić wszystkie trzy do jednej odpowiedzi, i właśnie dlatego
+            nigdy nie może tego do końca osiągnąć.
+          </p>
         </div>
       </div>
 
     </section>
 
     <section id="single-scatter">
-      <h2>Single Scatter is separate</h2>
-      <p>
+      <h2><span lang="en">Single Scatter is separate</span><span lang="pl">Single Scatter jest osobny</span></h2>
+      <p lang="en">
         In PxrSurface, <strong>Single Scatter is its own lobe on its own page</strong>,
         sitting next to Subsurface rather than inside it. It has a separate Gain,
         Color, Mean Free Path, Mean Free Path Color, its own refractive index
         (1.3), and a Blur control.
       </p>
-      <p>
+      <p lang="pl">
+        W PxrSurface <strong>Single Scatter to własny płat na własnej
+        stronie</strong>, siedzący obok Subsurface, a nie wewnątrz niej. Ma
+        osobny Gain, Color, Mean Free Path, Mean Free Path Color, własny
+        współczynnik załamania (1.3) i kontrolkę Blur.
+      </p>
+      <p lang="en">
         Single scattering is light that goes in, bounces <em>once</em>, and comes
         straight back out. That's what produces the crisp, directional glow
         through something thin and dense held up to a light — a hand over a
@@ -974,18 +1073,32 @@
         diffusion produces the soft even bloom; single scatter produces the
         structure inside it.
       </p>
+      <p lang="pl">
+        Single scattering to światło, które wchodzi, odbija się
+        <em>raz</em> i wychodzi prosto z powrotem. To ono daje ostrą,
+        kierunkową poświatę przez coś cienkiego i gęstego trzymanego pod
+        światło — dłoń nad latarką, plaster jadeitu, wosk ze świecą za nim.
+        Wielokrotna dyfuzja daje miękki, równomierny blask; single scatter
+        daje strukturę wewnątrz niego.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           Fog versus mist. Thick fog scatters headlights into a uniform glow —
           you can't tell where the beam points. Thin mist still shows you the
           beam. Diffusion is the fog; single scatter is the visible beam inside
           it.
         </p>
+        <p lang="pl">
+          Gęsta mgła kontra lekka mgiełka. Gęsta mgła rozprasza światła
+          samochodu w jednolitą poświatę — nie widać, gdzie celuje wiązka.
+          Lekka mgiełka wciąż pokazuje wiązkę. Dyfuzja to gęsta mgła; single
+          scatter to widoczna wiązka wewnątrz niej.
+        </p>
       </div>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           Arnold doesn't split these out. <code>randomwalk</code> traces the
           interior properly and so accounts for single-bounce light as part of
           the same computation — there's no separate lobe to enable and nothing
@@ -993,9 +1106,18 @@
           <strong>both</strong> PxrSurface lobes to get back what one Arnold
           slider was giving you.
         </p>
+        <p lang="pl">
+          Arnold tego nie rozdziela. <code>randomwalk</code> poprawnie
+          śledzi wnętrze, więc uwzględnia światło pojedynczego odbicia jako
+          część tych samych obliczeń — nie ma osobnego płata do włączenia i
+          niczego do zapomnienia. Co oznacza, że przy konwersji możesz
+          potrzebować <strong>obu</strong> płatów PxrSurface, by odzyskać
+          to, co dawał jeden suwak Arnolda.
+        </p>
       </div>
-      <p>Whether you need it depends on the model you picked:</p>
-      <ul>
+      <p lang="en">Whether you need it depends on the model you picked:</p>
+      <p lang="pl">Czy go potrzebujesz, zależy od wybranego modelu:</p>
+      <ul lang="en">
         <li>
           <strong>Jensen or dEon dipole</strong> — diffusion only. If your Arnold
           material had visible single-scatter character, you have to add the
@@ -1010,35 +1132,75 @@
           lobe on top risks double-counting.
         </li>
       </ul>
-      <p class="muted">
+      <ul lang="pl">
+        <li>
+          <strong>Jensen albo dEon dipole</strong> — tylko dyfuzja. Jeśli
+          twój materiał z Arnolda miał widoczny charakter single-scatter,
+          musisz sam dodać płat Single Scatter.
+        </li>
+        <li>
+          <strong>Burley Normalized</strong> — już obejmuje pojedyncze
+          rozproszenie.
+        </li>
+        <li>
+          <strong>Path Traced</strong> — już uwzględnia zdarzenia
+          pojedynczego i zerowego rozproszenia, tak jak
+          <code>randomwalk</code>. Dodanie osobnego płata na wierzch grozi
+          podwójnym liczeniem.
+        </li>
+      </ul>
+      <p class="muted" lang="en">
         Its Mean Free Path is built the same way as Subsurface's — scalar ×
         colour × the same shared Unit Length — so everything from the
         <a href="#unit-length">Unit Length</a> section applies here unchanged.
       </p>
+      <p class="muted" lang="pl">
+        Jego Mean Free Path jest zbudowany tak samo jak w Subsurface —
+        skalar × kolor × ten sam wspólny Unit Length — więc wszystko z
+        sekcji <a href="#unit-length">Unit Length</a> stosuje się tu bez
+        zmian.
+      </p>
     </section>
 
     <section id="energy">
-      <h2>Subsurface and the diffuse underneath</h2>
-      <p>
+      <h2><span lang="en">Subsurface and the diffuse underneath</span><span lang="pl">Subsurface i diffuse pod spodem</span></h2>
+      <p lang="en">
         Subsurface scattering <em>is</em> the surface's response to light. If
         the material is scattering light through its interior, that light is not
         also available to the ordinary diffuse layer — so as subsurface comes
         up, diffuse should come down.
       </p>
-      <p>
+      <p lang="pl">
+        Subsurface scattering <em>jest</em> odpowiedzią powierzchni na
+        światło. Jeśli materiał rozprasza światło przez swoje wnętrze, to
+        światło nie jest już dostępne dla zwykłej warstwy diffuse — więc gdy
+        subsurface rośnie, diffuse powinien maleć.
+      </p>
+      <p lang="en">
         Arnold does that for you. PxrSurface does not. It's the same story told
         at more length in the transition guide's
         <a href="guide.html#energy">who balances the layers</a> section, and it
         shows up here as two specific adjustments that Pixar's own conversion
         shader has to make by hand:
       </p>
-      <ul>
+      <p lang="pl">
+        Arnold robi to za ciebie. PxrSurface nie. To ta sama historia
+        opowiedziana dłużej w sekcji <a href="guide.html#energy">kto
+        balansuje warstwy</a> przewodnika przejścia, a tutaj ujawnia się jako
+        dwie konkretne korekty, które własny shader konwersji Pixara musi
+        zrobić ręcznie:
+      </p>
+      <ul lang="en">
         <li><strong>Diffuse Gain</strong> gets multiplied by <code>(1 − subsurface)</code>.</li>
         <li><strong>Subsurface Gain</strong> gets multiplied by <code>(1 − sheen)</code>.</li>
       </ul>
+      <ul lang="pl">
+        <li><strong>Diffuse Gain</strong> jest mnożony przez <code>(1 − subsurface)</code>.</li>
+        <li><strong>Subsurface Gain</strong> jest mnożony przez <code>(1 − sheen)</code>.</li>
+      </ul>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           So if you set Subsurface Gain to 1 and leave Diffuse Gain at its
           default of 1, you have a material lit twice — and it will read as
           washed out and strangely flat rather than obviously too bright, which
@@ -1046,119 +1208,144 @@
           Subsurface Gain up. And if the material also has Fuzz on it, that
           takes a bite out of the subsurface budget in turn.
         </p>
+        <p lang="pl">
+          Więc jeśli ustawisz Subsurface Gain na 1 i zostawisz Diffuse Gain
+          na domyślnym 1, masz materiał oświetlony dwukrotnie — a będzie
+          czytał się jako wyprany i dziwnie płaski, a nie ewidentnie za
+          jasny, co utrudnia diagnozę. Obniż Diffuse Gain w miarę
+          podnoszenia Subsurface Gain. A jeśli materiał ma też Fuzz, to z
+          kolei odgryza kawałek budżetu subsurface.
+        </p>
       </div>
     </section>
 
     <section id="advanced">
-      <p class="section-kicker">You probably don't need these</p>
-      <h2>The rest of the panel</h2>
-      <p>
+      <p class="section-kicker"><span lang="en">You probably don't need these</span><span lang="pl">Prawdopodobnie tego nie potrzebujesz</span></p>
+      <h2><span lang="en">The rest of the panel</span><span lang="pl">Reszta panelu</span></h2>
+      <p lang="en">
         PxrSurface has roughly forty subsurface-related parameters against
         Arnold's five. Almost none of them are things you'll reach for, but an
         unexplained control is a distracting one — so here is what the rest of
         the panel is for, one line each.
+      </p>
+      <p lang="pl">
+        PxrSurface ma z grubsza czterdzieści parametrów związanych z
+        subsurface wobec pięciu w Arnoldzie. Niemal po żaden z nich nigdy nie
+        sięgniesz, ale niewyjaśniona kontrolka rozprasza uwagę — więc oto do
+        czego służy reszta panelu, po jednej linijce każda.
       </p>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Control</th>
-              <th>Default</th>
-              <th>What it's for</th>
+              <th><span lang="en">Control</span><span lang="pl">Kontrolka</span></th>
+              <th><span lang="en">Default</span><span lang="pl">Domyślnie</span></th>
+              <th><span lang="en">What it's for</span><span lang="pl">Do czego służy</span></th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td class="col-pxr">Directionality</td>
               <td>0</td>
-              <td>Whether light continues forward through the medium rather than scattering evenly. This <em>does</em> have an Arnold equivalent: <strong>Subsurface Anisotropy</strong>.</td>
+              <td><span lang="en">Whether light continues forward through the medium rather than scattering evenly. This <em>does</em> have an Arnold equivalent: <strong>Subsurface Anisotropy</strong>.</span><span lang="pl">Czy światło kontynuuje do przodu przez medium zamiast rozpraszać się równomiernie. To <em>ma</em> odpowiednik w Arnoldzie: <strong>Subsurface Anisotropy</strong>.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Bleed</td>
               <td>0</td>
-              <td>Pushes light further through the medium while keeping fine detail — a gentler alternative to simply raising Mean Free Path.</td>
+              <td><span lang="en">Pushes light further through the medium while keeping fine detail — a gentler alternative to simply raising Mean Free Path.</span><span lang="pl">Przepycha światło dalej przez medium, zachowując drobny detal — łagodniejsza alternatywa niż zwykłe podniesienie Mean Free Path.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Diffuse Blend</td>
               <td>0</td>
-              <td>Mixes a little plain diffuse into the result. Its stated purpose is fixing dark artefacts on objects with very sharp edges.</td>
+              <td><span lang="en">Mixes a little plain diffuse into the result. Its stated purpose is fixing dark artefacts on objects with very sharp edges.</span><span lang="pl">Domiesza odrobinę zwykłego diffuse do wyniku. Jego deklarowanym celem jest naprawa ciemnych artefaktów na obiektach z bardzo ostrymi krawędziami.</span></td>
             </tr>
             <tr>
-              <td class="col-pxr">Internal reflection index</td>
+              <td class="col-pxr"><span lang="en">Internal reflection index</span><span lang="pl">Wewnętrzny współczynnik odbicia</span></td>
               <td>1.4</td>
-              <td>Makes light exit only roughly perpendicular to the surface, reflecting oblique paths back inside. Helps with over-bright curved areas.</td>
+              <td><span lang="en">Makes light exit only roughly perpendicular to the surface, reflecting oblique paths back inside. Helps with over-bright curved areas.</span><span lang="pl">Sprawia, że światło wychodzi tylko z grubsza prostopadle do powierzchni, odbijając skośne ścieżki z powrotem do środka. Pomaga z prześwietlonymi zakrzywionymi obszarami.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Post Tint</td>
-              <td>white</td>
-              <td>A colour multiplier applied after the whole subsurface computation. An art-direction escape hatch, not a physical control.</td>
+              <td><span lang="en">white</span><span lang="pl">biały</span></td>
+              <td><span lang="en">A colour multiplier applied after the whole subsurface computation. An art-direction escape hatch, not a physical control.</span><span lang="pl">Mnożnik koloru zastosowany po całych obliczeniach subsurface. Furtka do art-direction, nie kontrolka fizyczna.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Diffuse Computation Switch</td>
               <td>1</td>
-              <td>Falls back to cheap diffuse when the scattering distance is smaller than a pixel. A speed win on distant objects — but wrong for thin backlit ones, and not recommended with either Path Traced model.</td>
+              <td><span lang="en">Falls back to cheap diffuse when the scattering distance is smaller than a pixel. A speed win on distant objects — but wrong for thin backlit ones, and not recommended with either Path Traced model.</span><span lang="pl">Przełącza na tanie diffuse, gdy odległość rozpraszania jest mniejsza niż piksel. Zysk szybkości na odległych obiektach — ale błędny dla cienkich, podświetlonych, i nie zalecany z żadnym modelem Path Traced.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Consider Backside</td>
-              <td>on</td>
-              <td>Whether the far side of the object participates. Turning it <em>off</em> makes objects behave as though thicker than they are.</td>
+              <td><span lang="en">on</span><span lang="pl">włączone</span></td>
+              <td><span lang="en">Whether the far side of the object participates. Turning it <em>off</em> makes objects behave as though thicker than they are.</span><span lang="pl">Czy dalsza strona obiektu bierze udział. Wyłączenie sprawia, że obiekty zachowują się, jakby były grubsze, niż są.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Follow Topology</td>
               <td>0</td>
-              <td>How strongly surface normals steer the scattering.</td>
+              <td><span lang="en">How strongly surface normals steer the scattering.</span><span lang="pl">Jak mocno normalne powierzchni sterują rozpraszaniem.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Continuation Ray Mode</td>
-              <td>Off</td>
-              <td>How rays handle geometry inside the object: ignore it, jump to the last surface, or collect light at every hit. The last option adds brightness and noise together.</td>
+              <td><span lang="en">Off</span><span lang="pl">Wyłączone</span></td>
+              <td><span lang="en">How rays handle geometry inside the object: ignore it, jump to the last surface, or collect light at every hit. The last option adds brightness and noise together.</span><span lang="pl">Jak promienie traktują geometrię wewnątrz obiektu: ignorują ją, skaczą do ostatniej powierzchni, albo zbierają światło przy każdym trafieniu. Ta ostatnia opcja dodaje jasność razem z szumem.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Max Continuation Hits</td>
               <td>2</td>
-              <td>How many of those internal hits to test.</td>
+              <td><span lang="en">How many of those internal hits to test.</span><span lang="pl">Ile z tych wewnętrznych trafień testować.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Resolve Self Intersections</td>
-              <td>off</td>
-              <td>For geometry that overlaps itself — keeps only the outermost surfaces active for scattering.</td>
+              <td><span lang="en">off</span><span lang="pl">wyłączone</span></td>
+              <td><span lang="en">For geometry that overlaps itself — keeps only the outermost surfaces active for scattering.</span><span lang="pl">Dla geometrii, która nachodzi sama na siebie — zostawia aktywne dla rozpraszania tylko najbardziej zewnętrzne powierzchnie.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Double Sided / Transmit Gain</td>
-              <td>off / 0</td>
-              <td>Lets the lobe be lit from both sides, with a separate gain for the light coming through from behind.</td>
+              <td><span lang="en">off / 0</span><span lang="pl">wyłączone / 0</span></td>
+              <td><span lang="en">Lets the lobe be lit from both sides, with a separate gain for the light coming through from behind.</span><span lang="pl">Pozwala oświetlać płat z obu stron, z osobnym gainem dla światła przechodzącego z tyłu.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Irradiance Tint / Roughness</td>
-              <td>white / 0</td>
-              <td>Adjusts the light <em>before</em> it gets scattered, rather than the result. Shared by Subsurface and Single Scatter.</td>
+              <td><span lang="en">white / 0</span><span lang="pl">biały / 0</span></td>
+              <td><span lang="en">Adjusts the light <em>before</em> it gets scattered, rather than the result. Shared by Subsurface and Single Scatter.</span><span lang="pl">Dostraja światło <em>zanim</em> zostanie rozproszone, a nie wynik. Współdzielony przez Subsurface i Single Scatter.</span></td>
             </tr>
             <tr>
               <td class="col-pxr">Trace Subset</td>
-              <td>empty</td>
-              <td>Restricts which objects participate in scattering. A pipeline tool for cases like a head and a separate jaw that shouldn't bleed into each other.</td>
+              <td><span lang="en">empty</span><span lang="pl">puste</span></td>
+              <td><span lang="en">Restricts which objects participate in scattering. A pipeline tool for cases like a head and a separate jaw that shouldn't bleed into each other.</span><span lang="pl">Ogranicza, które obiekty biorą udział w rozpraszaniu. Narzędzie pipeline'owe na przypadki jak głowa i osobna szczęka, które nie powinny się w siebie rozlewać.</span></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <p class="muted">
+      <p class="muted" lang="en">
         If you're converting a material rather than authoring a new one, leave
         every one of these alone. None of them has an Arnold counterpart to port
         from, so touching them means you're no longer converting — you're
         art-directing, which is fine, but do it after the conversion reads
         correctly.
       </p>
+      <p class="muted" lang="pl">
+        Jeśli konwertujesz materiał, a nie tworzysz nowy, zostaw każdą z nich
+        w spokoju. Żadna nie ma odpowiednika w Arnoldzie, z którego mogłabyś
+        przenieść wartość, więc dotykanie ich oznacza, że już nie
+        konwertujesz — art-directujesz, co jest w porządku, ale rób to po
+        tym, jak konwersja zaczyna wyglądać poprawnie.
+      </p>
     </section>
 
     <section id="recipe">
-      <h2>Conversion recipe</h2>
-      <p>
+      <h2><span lang="en">Conversion recipe</span><span lang="pl">Przepis konwersji</span></h2>
+      <p lang="en">
         Putting the whole page together, in the order that avoids doing work
         twice. The first step is the one people skip.
       </p>
-      <ol class="steps">
+      <p lang="pl">
+        Składając całą stronę razem, w kolejności unikającej podwójnej
+        roboty. Pierwszy krok to ten, który ludzie pomijają.
+      </p>
+      <ol class="steps" lang="en">
         <li>
           <strong>Check the scale of your scene, and set Unit Length to
           match.</strong> Not a subsurface parameter, but it multiplies every
