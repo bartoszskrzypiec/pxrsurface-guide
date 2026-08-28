@@ -16,6 +16,9 @@
     <a href="guide.html">AiStandardSurface → PxrSurface</a>
     <a href="sss.html">Subsurface scattering</a>
     <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
   </div>
 </nav>
 
@@ -38,7 +41,8 @@
         A parameter-by-parameter walkthrough for artists moving from Arnold's
         AiStandardSurface to RenderMan's PxrSurface — what each control is
         called on the other side, what changes conceptually, and the
-        gotchas that trip people up first.
+        gotchas that trip people up first. Now with live Fresnel, metalness,
+        thin-film and absorption widgets built in.
       </p>
       <p><a href="guide.html">Read the guide →</a></p>
     </div>
@@ -51,7 +55,8 @@
         because it's measured in distances rather than weights: what a mean
         free path is, why Radius and DMFP look unrelated but aren't, the Unit
         Length multiplier Arnold has no equivalent for, and how to pick a
-        scattering model.
+        scattering model — with a random-walk visualiser that makes mean free
+        path something you can watch rather than just read about.
       </p>
       <p><a href="sss.html">Read the guide →</a></p>
     </div>
@@ -63,9 +68,47 @@
         RenderMan gives you two ways to build a material: PxrSurface, one node
         with every layer already in it, and MaterialX Lama, a set of
         single-purpose nodes you wire together. What each one is good at, how
-        the pieces map onto each other, and how to tell which a job needs.
+        the pieces map onto each other, and how to tell which a job needs —
+        including a light-budget widget showing exactly how LamaAdd loses
+        energy conservation.
       </p>
       <p><a href="lama.html">Read the guide →</a></p>
+    </div>
+
+    <div class="card">
+      <span class="badge">Interactive · EN / PL</span>
+      <h3>Beckmann vs GGX</h3>
+      <p class="muted">
+        Everyone knows to switch PxrSurface's specular model to match Arnold.
+        Far fewer can say what actually changes — it isn't the size of the
+        highlight, it's the faint tail outside it. With live spheres you can
+        light and expose yourself.
+      </p>
+      <p><a href="spec.html">Read the guide →</a></p>
+    </div>
+
+    <div class="card">
+      <span class="badge">Interactive · EN / PL</span>
+      <h3>Specular Rotation vs Shading Tangent</h3>
+      <p class="muted">
+        Why Arnold gives you an angle for anisotropy and PxrSurface gives you a
+        vector — what each can and cannot express, why re-doing your UVs can
+        rotate your highlights, and why underneath the two are the same
+        mechanism.
+      </p>
+      <p><a href="aniso.html">Read the guide →</a></p>
+    </div>
+
+    <div class="card">
+      <span class="badge">Interactive · EN / PL</span>
+      <h3>Why fuzz has a cone angle</h3>
+      <p class="muted">
+        Every other softness control is called roughness; PxrSurface's fuzz
+        asks for degrees. That's not a naming quirk — the fuzz lobe has no
+        mirror direction for a roughness to widen, and Arnold's sheen is a
+        different model rather than the same one in other units.
+      </p>
+      <p><a href="fuzz.html">Read the guide →</a></p>
     </div>
   </div>
 
@@ -85,6 +128,12 @@
     are safe to act on — though it's always worth a sanity check against the
     versions installed in your own pipeline.
   </p>
+  <p>
+    Most guides carry interactive widgets — live spheres, curves and diagrams
+    you can drag. They compute the real maths in your browser, so they are good
+    for building intuition about how a control behaves, but they are not a
+    substitute for a test render in your own scene.
+  </p>
 </main>
 
 <footer>
@@ -92,7 +141,7 @@
     Written for lookdev and lighting artists switching render engines. No prior
     shader-writing knowledge assumed.
   </p>
-  <p class="muted">Last updated: 26 August 2026.</p>
+  <p class="muted">Last updated: 27 August 2026.</p>
 </footer>
 
 </body>

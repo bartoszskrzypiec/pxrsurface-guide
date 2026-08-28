@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-title-pl="Beckmann kontra GGX">Beckmann vs GGX Guide</title>
+<meta name="description" content="An interactive look at the two microfacet specular models an artist actually meets — Beckmann and GGX — why their highlights differ, and why a roughness value does not transfer between them.">
+<link rel="stylesheet" href="assets/css/style.css">
+<script>
+/* Set the language before first paint so a Polish reader never sees a flash
+   of English. i18n.js repeats this once modules load. */
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
+</head>
+<body>
+
+<nav class="topnav topnav--i18n">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="sss.html">Subsurface scattering</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="spec.html" class="active">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker"><span lang="en">Deep dive</span><span lang="pl">Analiza</span></p>
+  <h1><span lang="en">Beckmann vs GGX</span><span lang="pl">Beckmann kontra GGX</span></h1>
+  <p class="lead" lang="en">
+    Arnold always gives you GGX. PxrSurface defaults to Beckmann. Everyone
+    knows to flip the switch — almost nobody can say what actually changes.
+    It isn't the size of the highlight. It's what happens <em>outside</em> it.
+  </p>
+  <p class="lead" lang="pl">
+    Arnold zawsze daje ci GGX. PxrSurface domyślnie używa Beckmanna. Każdy wie,
+    że trzeba przełączyć ten przełącznik — prawie nikt nie potrafi powiedzieć,
+    co się właściwie zmienia. Nie chodzi o wielkość rozbłysku. Chodzi o to, co
+    dzieje się <em>poza</em> nim.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
+    <ol>
+      <li><a href="#microfacets"><span lang="en">What a specular model is</span><span lang="pl">Czym jest model odbicia</span></a></li>
+      <li><a href="#the-shapes"><span lang="en">The two shapes</span><span lang="pl">Dwa kształty</span></a></li>
+      <li><a href="#side-by-side"><span lang="en">Same sphere, both models</span><span lang="pl">Ta sama kula, oba modele</span></a></li>
+      <li><a href="#the-tail"><span lang="en">The tail is the whole story</span><span lang="pl">Cała rzecz w ogonie</span></a></li>
+      <li><a href="#matching"><span lang="en">Roughness doesn't transfer</span><span lang="pl">Chropowatość się nie przenosi</span></a></li>
+      <li><a href="#which-when"><span lang="en">Which one, when</span><span lang="pl">Który i kiedy</span></a></li>
+      <li><a href="#pitfalls"><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="microfacets">
+      <h2><span lang="en">What a specular model actually is</span><span lang="pl">Czym właściwie jest model odbicia</span></h2>
+
+      <p lang="en">
+        A shiny surface is not smooth. Under a microscope it is a landscape of
+        tiny facets, each one a perfect little mirror pointing in a slightly
+        different direction. You see a highlight where enough of those facets
+        happen to be angled to bounce the light straight at your eye.
+      </p>
+      <p lang="pl">
+        Błyszcząca powierzchnia nie jest gładka. Pod mikroskopem to krajobraz
+        drobnych fasetek, z których każda jest idealnym lusterkiem skierowanym
+        w nieco innym kierunku. Rozbłysk widzisz tam, gdzie wystarczająco wiele
+        z nich jest ustawionych tak, by odbić światło prosto do twojego oka.
+      </p>
+
+      <p lang="en">
+        <strong>Roughness</strong> says how wildly those facets are tilted.
+        The <strong>specular model</strong> says something different and much
+        easier to overlook: given that amount of tilt, <em>how are the facets
+        distributed</em>? Are they clustered tightly around the average, or do
+        a stubborn few point far away from it?
+      </p>
+      <p lang="pl">
+        <strong>Chropowatość</strong> mówi, jak mocno te fasetki są
+        poprzechylane. <strong>Model odbicia</strong> mówi coś innego i o wiele
+        łatwiejszego do przeoczenia: przy takim rozrzucie nachyleń,
+        <em>jak fasetki są rozłożone</em>? Czy skupiają się ciasno wokół
+        średniej, czy może uparta mniejszość celuje daleko od niej?
+      </p>
+
+      <div class="analogy">
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
+          Two archery targets with the same number of arrows in them. Both
+          groups have the same average spread — but on one target every arrow
+          is inside a neat ring, and on the other most arrows are in a tighter
+          ring with a handful scattered right out to the edge of the hay bale.
+          Same "spread", completely different picture. Beckmann is the neat
+          target. GGX is the one with strays.
+        </p>
+        <p lang="pl">
+          Dwie tarcze łucznicze z tą samą liczbą strzał. Oba skupienia mają ten
+          sam średni rozrzut — ale na jednej tarczy wszystkie strzały mieszczą
+          się w równym pierścieniu, a na drugiej większość siedzi ciaśniej, za
+          to kilka poleciało aż na skraj beli siana. Ten sam „rozrzut”, zupełnie
+          inny obrazek. Beckmann to ta równa tarcza. GGX to ta ze strzałami
+          w krzakach.
+        </p>
+      </div>
+
+      <details class="math">
+        <summary><span lang="en">The formulas, if you want them</span><span lang="pl">Wzory, jeśli ich potrzebujesz</span></summary>
+        <div class="formula">Beckmann:  D(θ) = exp( −tan²θ / α² ) / ( π α² cos⁴θ )
+
+GGX:       D(θ) = α² / ( π · ( cos²θ (α² − 1) + 1 )² )</div>
+        <p class="formula-where" lang="en">
+          θ is the angle between a facet's normal and the surface normal, and
+          α is the roughness after the renderer's internal remap (commonly
+          α = roughness²). Beckmann's <code>exp</code> decays faster than any
+          polynomial; GGX's squared denominator decays like 1/θ⁴. That single
+          difference is the entire subject of this page.
+        </p>
+        <p class="formula-where" lang="pl">
+          θ to kąt między normalną fasetki a normalną powierzchni, a α to
+          chropowatość po wewnętrznym przemapowaniu renderera (zwykle
+          α = chropowatość²). <code>exp</code> Beckmanna zanika szybciej niż
+          jakikolwiek wielomian; kwadrat w mianowniku GGX zanika jak 1/θ⁴. Ta
+          jedna różnica to cały temat tej strony.
+        </p>
+      </details>
+    </section>
+
+    <section id="the-shapes">
+      <h2><span lang="en">The two shapes</span><span lang="pl">Dwa kształty</span></h2>
+
+      <p lang="en">
+        Here are both distributions plotted against facet angle, at whatever
+        roughness you choose. In the linear view they look almost like the same
+        curve. Switch the vertical axis to <strong>logarithmic</strong> and the
+        argument ends: GGX simply refuses to reach zero.
+      </p>
+      <p lang="pl">
+        Poniżej oba rozkłady w funkcji kąta fasetki, przy dowolnie wybranej
+        chropowatości. W widoku liniowym wyglądają niemal jak ta sama krzywa.
+        Przełącz oś pionową na <strong>logarytmiczną</strong> i dyskusja się
+        kończy: GGX po prostu nie chce dojść do zera.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">Facet distribution D(θ)</span><span lang="pl">Rozkład fasetek D(θ)</span></p>
+          <p class="viz__sub"><span lang="en">Horizontal: how far a facet is tilted from the surface normal. Vertical: how many facets are tilted that far.</span><span lang="pl">Poziomo: jak mocno fasetka jest odchylona od normalnej. Pionowo: ile fasetek ma takie odchylenie.</span></p>
+        </div>
+        <div class="viz__stage"><canvas id="ndf-plot" data-ratio="0.52"></canvas></div>
+        <div class="viz__legend">
+          <span><i class="legend-a"></i>Beckmann</span>
+          <span><i class="legend-b"></i>GGX</span>
+        </div>
+        <div class="viz__controls" id="ndf-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="ndfRough">
+              <span><span lang="en">Roughness</span><span lang="pl">Chropowatość</span></span>
+              <span class="ctl__value" data-value-for="ndfRough"></span>
+            </label>
+            <input type="range" id="ndfRough" min="0.05" max="0.9" step="0.01" value="0.3" data-fmt="2">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span><span lang="en">Vertical axis</span><span lang="pl">Oś pionowa</span></span></div>
+            <div class="seg" id="ndfScale" data-value="lin">
+              <button type="button" data-val="lin" class="is-active"><span lang="en">Linear</span><span lang="pl">Liniowa</span></button>
+              <button type="button" data-val="log"><span lang="en">Logarithmic</span><span lang="pl">Logarytmiczna</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="viz__note">
+          <p lang="en">
+            Both curves are normalised to the same peak so you are comparing
+            shape, not brightness. In the log view, every gridline down is a
+            factor of ten fewer facets.
+          </p>
+          <p lang="pl">
+            Obie krzywe są znormalizowane do tego samego szczytu, więc
+            porównujesz kształt, a nie jasność. W widoku logarytmicznym każda
+            linia siatki w dół to dziesięć razy mniej fasetek.
+          </p>
+        </div>
+      </div>
+
+      <p lang="en">
+        Beckmann's curve falls off a cliff. Past a certain tilt there are
+        effectively no facets left, so the highlight has an edge you could
+        almost trace. GGX's curve never quite lands — there is always a thin
+        population of facets pointing far off-axis, and they put light
+        everywhere.
+      </p>
+      <p lang="pl">
+        Krzywa Beckmanna spada jak z urwiska. Powyżej pewnego nachylenia
+        praktycznie nie ma już fasetek, więc rozbłysk ma krawędź, którą dałoby
+        się obrysować. Krzywa GGX nigdy do końca nie ląduje — zawsze zostaje
+        cienka populacja fasetek celujących daleko w bok, i to one rozsiewają
+        światło wszędzie.
+      </p>
+    </section>
+
+    <section id="side-by-side">
+      <h2><span lang="en">Same sphere, both models</span><span lang="pl">Ta sama kula, oba modele</span></h2>
+
+      <p lang="en">
+        One sphere, split down the middle. Same roughness on both halves, same
+        light, same everything — the only difference across that seam is which
+        distribution the renderer is asking. Drag the light size up and watch
+        the seam become invisible; drag it back down and the two halves part
+        company again.
+      </p>
+      <p lang="pl">
+        Jedna kula, przecięta na pół. Ta sama chropowatość po obu stronach, to
+        samo światło, wszystko takie samo — jedyną różnicą po dwóch stronach
+        szwu jest to, o który rozkład pyta renderer. Zwiększ rozmiar światła
+        i patrz, jak szew znika; zmniejsz go z powrotem, a połówki znów się
+        rozjeżdżają.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">Live render — Beckmann (left) · GGX (right)</span><span lang="pl">Render na żywo — Beckmann (lewo) · GGX (prawo)</span></p>
+          <p class="viz__sub"><span lang="en">Real microfacet maths in a fragment shader, lit by one spherical area light.</span><span lang="pl">Prawdziwa matematyka mikrofasetek w shaderze fragmentów, oświetlona jedną kulistą lampą powierzchniową.</span></p>
+        </div>
+        <div class="viz__stage"><canvas id="ball-split" data-ratio="0.6"></canvas></div>
+        <div class="viz__legend">
+          <span><i class="legend-a"></i>Beckmann</span>
+          <span><i class="legend-b"></i>GGX</span>
+        </div>
+        <div class="viz__controls" id="ball-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="ballRough">
+              <span><span lang="en">Roughness (both halves)</span><span lang="pl">Chropowatość (obie połówki)</span></span>
+              <span class="ctl__value" data-value-for="ballRough"></span>
+            </label>
+            <input type="range" id="ballRough" min="0.05" max="0.8" step="0.01" value="0.28" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="ballLight">
+              <span><span lang="en">Light size</span><span lang="pl">Rozmiar światła</span></span>
+              <span class="ctl__value" data-value-for="ballLight"></span>
+            </label>
+            <input type="range" id="ballLight" min="1" max="40" step="0.5" value="7" data-fmt="deg">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="ballExp">
+              <span><span lang="en">Exposure</span><span lang="pl">Ekspozycja</span></span>
+              <span class="ctl__value" data-value-for="ballExp"></span>
+            </label>
+            <input type="range" id="ballExp" min="-3" max="6" step="0.1" value="0" data-fmt="stops">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span><span lang="en">Tone mapping</span><span lang="pl">Mapowanie tonalne</span></span></div>
+            <div class="seg" id="ballTone" data-value="film">
+              <button type="button" data-val="film" class="is-active"><span lang="en">Filmic</span><span lang="pl">Filmowe</span></button>
+              <button type="button" data-val="clip"><span lang="en">Clip</span><span lang="pl">Obcięcie</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
+          The right half is what Arnold has always shown you. If you have spent
+          years building an eye for how a highlight should fall off, that eye
+          is calibrated to GGX — which is exactly why a ported material lit in
+          PxrSurface can feel subtly hard before you've changed a single value.
+        </p>
+        <p lang="pl">
+          Prawa połówka to dokładnie to, co Arnold zawsze ci pokazywał. Jeśli
+          latami wyrabiałeś sobie oko na to, jak rozbłysk powinien zanikać, to
+          oko jest wykalibrowane na GGX — i właśnie dlatego przeniesiony
+          materiał oświetlony w PxrSurface potrafi wydać się subtelnie twardy,
+          zanim jeszcze zmienisz jakąkolwiek wartość.
+        </p>
+      </div>
+    </section>
+
+    <section id="the-tail">
+      <h2><span lang="en">The tail is the whole story</span><span lang="pl">Cała rzecz w ogonie</span></h2>
+
+      <p lang="en">
+        At default exposure both highlights clip to white, and the cores look
+        identical because clipped white is clipped white. Push the exposure
+        slider above and the difference walks out into the open: a faint,
+        wide halo bleeding away from the GGX core that the Beckmann side
+        simply doesn't have.
+      </p>
+      <p lang="pl">
+        Przy domyślnej ekspozycji oba rozbłyski obcinają się do bieli, a rdzenie
+        wyglądają identycznie, bo obcięta biel to obcięta biel. Podbij suwak
+        ekspozycji powyżej, a różnica sama wychodzi na wierzch: słaba, szeroka
+        poświata rozlewająca się wokół rdzenia GGX, której strona Beckmanna po
+        prostu nie ma.
+      </p>
+
+      <p lang="en">
+        That halo is why GGX won. Measured data from real materials — polished
+        metal, car paint, plastic — nearly always shows more light out at wide
+        angles than Beckmann predicts. GGX was adopted precisely because its
+        long tail matches what real surfaces do.
+      </p>
+      <p lang="pl">
+        Ta poświata jest powodem, dla którego GGX wygrał. Zmierzone dane
+        prawdziwych materiałów — polerowanego metalu, lakieru samochodowego,
+        plastiku — niemal zawsze pokazują więcej światła pod szerokimi kątami,
+        niż przewiduje Beckmann. GGX przyjął się właśnie dlatego, że jego długi
+        ogon odpowiada temu, co robią prawdziwe powierzchnie.
+      </p>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"I switched the model and nothing happened"</span><span lang="pl">„Przełączyłem model i nic się nie stało”</span></div>
+        <p lang="en">
+          You are almost certainly looking at a clipped highlight on a mid-grey
+          background, where the two models genuinely do agree. Look at a dark
+          material, a wide light source, or a grazing angle instead — anywhere
+          the tail has room to show. Or just raise the exposure until the core
+          stops blowing out.
+        </p>
+        <p lang="pl">
+          Prawie na pewno patrzysz na obcięty rozbłysk na średnio szarym tle,
+          gdzie oba modele faktycznie się zgadzają. Spójrz zamiast tego na
+          ciemny materiał, szerokie źródło światła albo kąt muskający —
+          wszędzie tam, gdzie ogon ma miejsce, by się pokazać. Albo po prostu
+          podnieś ekspozycję, aż rdzeń przestanie się przepalać.
+        </p>
+      </div>
+    </section>
+
+    <section id="matching">
+      <h2><span lang="en">A roughness value doesn't transfer</span><span lang="pl">Wartość chropowatości się nie przenosi</span></h2>
+
+      <p lang="en">
+        This is the part that costs people a day. Copying
+        <strong>Specular Roughness 0.3</strong> from Arnold into PxrSurface's
+        <strong>Roughness 0.3</strong> is not a translation, because the two
+        models spend that roughness differently. GGX puts some of it into the
+        tail, so its core ends up <em>tighter</em> than a Beckmann lobe of the
+        same nominal roughness.
+      </p>
+      <p lang="pl">
+        To ten fragment, który kosztuje ludzi cały dzień. Przepisanie
+        <strong>Specular Roughness 0.3</strong> z Arnolda do
+        <strong>Roughness 0.3</strong> w PxrSurface nie jest tłumaczeniem, bo
+        oba modele wydają tę chropowatość inaczej. GGX część z niej przeznacza
+        na ogon, więc jego rdzeń wychodzi <em>ciaśniejszy</em> niż płat
+        Beckmanna o tej samej nominalnej chropowatości.
+      </p>
+
+      <p lang="en">
+        Try it: leave the GGX half alone and hunt for the Beckmann roughness
+        whose core looks the same size. You will find one — and it won't be the
+        same number. Then look at the outer edge, and you'll find you can never
+        match both at once.
+      </p>
+      <p lang="pl">
+        Spróbuj: zostaw połówkę GGX w spokoju i poszukaj takiej chropowatości
+        Beckmanna, przy której rdzeń wygląda na tak samo duży. Znajdziesz ją —
+        i nie będzie to ta sama liczba. Potem spójrz na zewnętrzną krawędź
+        i przekonasz się, że jednego z drugim nigdy nie dopasujesz naraz.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">Try to match them — Beckmann (left) · GGX (right)</span><span lang="pl">Spróbuj je dopasować — Beckmann (lewo) · GGX (prawo)</span></p>
+          <p class="viz__sub"><span lang="en">Independent roughness per half.</span><span lang="pl">Niezależna chropowatość dla każdej połówki.</span></p>
+        </div>
+        <div class="viz__stage"><canvas id="ball-match" data-ratio="0.6"></canvas></div>
+        <div class="viz__controls" id="match-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="matchB">
+              <span><span lang="en">Beckmann roughness</span><span lang="pl">Chropowatość Beckmanna</span></span>
+              <span class="ctl__value" data-value-for="matchB"></span>
+            </label>
+            <input type="range" id="matchB" min="0.05" max="0.8" step="0.01" value="0.30" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="matchG">
+              <span><span lang="en">GGX roughness</span><span lang="pl">Chropowatość GGX</span></span>
+              <span class="ctl__value" data-value-for="matchG"></span>
+            </label>
+            <input type="range" id="matchG" min="0.05" max="0.8" step="0.01" value="0.30" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="matchExp">
+              <span><span lang="en">Exposure</span><span lang="pl">Ekspozycja</span></span>
+              <span class="ctl__value" data-value-for="matchExp"></span>
+            </label>
+            <input type="range" id="matchExp" min="-3" max="6" step="0.1" value="1.5" data-fmt="stops">
+          </div>
+        </div>
+        <div class="readout" id="match-readout"></div>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">→ <span lang="en">The practical answer</span><span lang="pl">Odpowiedź praktyczna</span></div>
+        <p lang="en">
+          Don't convert the number — remove the need to. Set PxrSurface's
+          <strong>Specular Model</strong> to <strong>GGX</strong> and your
+          Arnold roughness values carry over directly. Matching Beckmann to
+          GGX by eye is only worth doing when something else forces you to stay
+          on Beckmann.
+        </p>
+        <p lang="pl">
+          Nie przeliczaj liczby — usuń potrzebę przeliczania. Ustaw
+          <strong>Specular Model</strong> w PxrSurface na <strong>GGX</strong>,
+          a wartości chropowatości z Arnolda przeniosą się bezpośrednio.
+          Dopasowywanie Beckmanna do GGX na oko ma sens tylko wtedy, gdy coś
+          innego zmusza cię do pozostania przy Beckmannie.
+        </p>
+      </div>
+    </section>
+
+    <section id="which-when">
+      <h2><span lang="en">Which one, when</span><span lang="pl">Który i kiedy</span></h2>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><span lang="en">Question</span><span lang="pl">Pytanie</span></th>
+              <th><span lang="en">Beckmann</span><span lang="pl">Beckmann</span></th>
+              <th><span lang="en">GGX</span><span lang="pl">GGX</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span lang="en">Highlight edge</span><span lang="pl">Krawędź rozbłysku</span></td>
+              <td><span lang="en">Defined, stops</span><span lang="pl">Wyraźna, kończy się</span></td>
+              <td><span lang="en">Fades forever</span><span lang="pl">Zanika bez końca</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Matches measured materials</span><span lang="pl">Zgodność z pomiarami materiałów</span></td>
+              <td><span lang="en">Under-predicts wide angles</span><span lang="pl">Zaniża szerokie kąty</span></td>
+              <td><span lang="en">Close, which is why it won</span><span lang="pl">Blisko — i dlatego wygrał</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Render noise</span><span lang="pl">Szum w renderze</span></td>
+              <td><span lang="en">Slightly cheaper to sample</span><span lang="pl">Nieco tańszy w próbkowaniu</span></td>
+              <td><span lang="en">Tail costs samples on rough metal</span><span lang="pl">Ogon kosztuje próbki na chropowatym metalu</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">In AiStandardSurface</span><span lang="pl">W AiStandardSurface</span></td>
+              <td class="col-arnold"><em><span lang="en">not offered</span><span lang="pl">niedostępny</span></em></td>
+              <td class="col-arnold"><span lang="en">always, no switch</span><span lang="pl">zawsze, bez przełącznika</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">In PxrSurface</span><span lang="pl">W PxrSurface</span></td>
+              <td class="col-pxr"><span lang="en">the default</span><span lang="pl">domyślny</span></td>
+              <td class="col-pxr"><span lang="en">one enum away</span><span lang="pl">jedno pole enum dalej</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p lang="en">
+        In practice: <strong>use GGX</strong>. It is what every other renderer
+        in your pipeline is doing, what your references were shot against, and
+        what your muscle memory expects. Beckmann earns its place in the
+        narrow case where you actively want a highlight to stop — a stylised
+        look, or killing a glow that reads as a lens artefact rather than a
+        surface.
+      </p>
+      <p lang="pl">
+        W praktyce: <strong>używaj GGX</strong>. To robi każdy inny renderer
+        w twoim pipelinie, na tym nakręcono twoje referencje i tego oczekuje
+        twoja pamięć mięśniowa. Beckmann zarabia na swoje miejsce w wąskim
+        przypadku, gdy świadomie chcesz, by rozbłysk się kończył — przy
+        stylizowanym looku albo gdy trzeba zabić poświatę czytaną jako artefakt
+        obiektywu, a nie własność powierzchni.
+      </p>
+    </section>
+
+    <section id="pitfalls">
+      <h2><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></h2>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The metal reads as plastic since the port"</span><span lang="pl">„Metal wygląda jak plastik od czasu przeniesienia”</span></div>
+        <p lang="en">
+          A rough metal without its GGX tail loses the broad, dirty glow that
+          sells it as metal, and what's left is a clean blob — which is what
+          plastic looks like. Check <strong>Specular Model</strong> first, before
+          you start pushing roughness around.
+        </p>
+        <p lang="pl">
+          Chropowaty metal bez swojego ogona GGX traci szeroką, brudną poświatę,
+          która sprzedaje go jako metal, a to, co zostaje, to czysta plama —
+          czyli dokładnie to, jak wygląda plastik. Sprawdź najpierw
+          <strong>Specular Model</strong>, zanim zaczniesz przesuwać
+          chropowatość.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"I set it to GGX on the primary specular and it's still wrong"</span><span lang="pl">„Ustawiłem GGX na głównym specularze i dalej jest źle”</span></div>
+        <p lang="en">
+          PxrSurface has more than one specular lobe. The rough specular has its
+          own model setting, and it also defaults to Beckmann. If you are using
+          both lobes, both need switching.
+        </p>
+        <p lang="pl">
+          PxrSurface ma więcej niż jeden płat odbicia. Rough specular ma własne
+          ustawienie modelu i również domyślnie stoi na Beckmannie. Jeśli
+          używasz obu płatów, oba trzeba przełączyć.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"My matched Beckmann falls apart under a different light"</span><span lang="pl">„Mój dopasowany Beckmann rozsypuje się przy innym świetle”</span></div>
+        <p lang="en">
+          Because you matched one thing and the models differ in two. A
+          roughness tuned to match GGX's core under a small light will be too
+          broad under a large one, and the tail was never going to match at
+          all. Any eyeball match is valid for one lighting setup only.
+        </p>
+        <p lang="pl">
+          Bo dopasowałeś jedną rzecz, a modele różnią się na dwóch. Chropowatość
+          dostrojona do rdzenia GGX przy małym świetle będzie za szeroka przy
+          dużym, a ogon i tak nigdy nie miał się zgodzić. Każde dopasowanie na
+          oko obowiązuje tylko dla jednego ustawienia świateł.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--trailing">
+      <span class="badge"><span lang="en">Next guide</span><span lang="pl">Następny przewodnik</span></span>
+      <h3><span lang="en">Specular Rotation vs Shading Tangent</span><span lang="pl">Specular Rotation kontra Shading Tangent</span></h3>
+      <p class="muted" lang="en">
+        Once the highlight shape is right, the next argument is which way it
+        points. Arnold hands you an angle; PxrSurface hands you a vector — and
+        underneath they are the same machine.
+      </p>
+      <p class="muted" lang="pl">
+        Gdy kształt rozbłysku już się zgadza, kolejny spór dotyczy tego, w którą
+        stronę jest skierowany. Arnold daje ci kąt, PxrSurface wektor — a pod
+        spodem to ta sama maszyneria.
+      </p>
+      <p><a href="aniso.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <p lang="en">
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
+    The spheres on this page are rendered live in your browser from the
+    published Beckmann and GGX distributions with matched Smith shadowing,
+    using the common α = roughness² convention. They are here to show how the
+    two <em>shapes</em> differ — they are not a substitute for a test render,
+    and the exact roughness remap inside RenderMan or Arnold may not be the one
+    used here. Parameter names were checked against PxrSurface in RenderMan 27
+    and <code>standard_surface</code> in Arnold for Maya 2025.
+  </p>
+  <p lang="pl">
+    Kule na tej stronie są renderowane na żywo w twojej przeglądarce
+    z opublikowanych rozkładów Beckmanna i GGX z dopasowanym cieniowaniem
+    Smitha, przy powszechnej konwencji α = chropowatość². Są tu po to, by
+    pokazać, jak różnią się oba <em>kształty</em> — nie zastępują testowego
+    renderu, a dokładne przemapowanie chropowatości wewnątrz RenderMana czy
+    Arnolda może nie być tym użytym tutaj. Nazwy parametrów sprawdzono
+    względem PxrSurface w RenderMan 27 i <code>standard_surface</code>
+    w Arnoldzie dla Maya 2025.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 27 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 27 sierpnia 2026.</span></p>
+</footer>
+
+<script type="module" src="assets/js/spec.js"></script>
+</body>
+</html>

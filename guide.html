@@ -16,6 +16,9 @@
     <a href="guide.html" class="active">AiStandardSurface → PxrSurface</a>
     <a href="sss.html">Subsurface scattering</a>
     <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
   </div>
 </nav>
 
@@ -384,6 +387,63 @@
         </p>
       </div>
 
+      <div class="viz" id="viz-metalness">
+        <div class="viz__head">
+          <p class="viz__title">What that one slider was doing</p>
+          <p class="viz__sub">
+            One sphere, split down the middle. Left half driven by Arnold's
+            Metalness. Right half driven by PxrSurface's Face Color, Edge Color
+            and Diffuse Gain, all set from that same number.
+          </p>
+        </div>
+        <div class="viz__stage"><canvas id="metal-ball" data-ratio="0.6"></canvas></div>
+        <div class="viz__legend">
+          <span><i class="legend-arnold"></i>Arnold — one Metalness slider</span>
+          <span><i class="legend-pxr"></i>PxrSurface — two colours and a gain</span>
+        </div>
+        <div class="viz__controls" id="metal-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="mtMetal">
+              <span>Metalness</span>
+              <span class="ctl__value" data-value-for="mtMetal"></span>
+            </label>
+            <input type="range" id="mtMetal" min="0" max="1" step="0.01" value="1" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="mtHue">
+              <span>Base Color hue</span>
+              <span class="ctl__value" data-value-for="mtHue"></span>
+            </label>
+            <input type="range" id="mtHue" min="0" max="360" step="1" value="45" data-fmt="deg0">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="mtRough">
+              <span>Roughness</span>
+              <span class="ctl__value" data-value-for="mtRough"></span>
+            </label>
+            <input type="range" id="mtRough" min="0.05" max="0.6" step="0.01" value="0.22" data-fmt="2">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Diffuse Gain on the PxrSurface side</span></div>
+            <div class="seg" id="mtDiffuse" data-value="zeroed">
+              <button type="button" data-val="zeroed" class="is-active">Zeroed</button>
+              <button type="button" data-val="left">Left at 1</button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="metal-readout"></div>
+        <div class="viz__note">
+          <p>
+            With Diffuse Gain zeroed the seam disappears at every Metalness
+            value — matching those two colours and killing the diffuse is
+            <em>all</em> the Arnold slider was ever doing. Switch it to "left
+            at 1" and the seam reappears: that extra brightness on the right is
+            the washed-out, plasticky metal described above, and the seam shows
+            you exactly how much light shouldn't be there.
+          </p>
+        </div>
+      </div>
+
       <h3>Fresnel Mode: Artistic vs. Physical</h3>
       <p>
         PxrSurface gives you a choice for how the specular color blends
@@ -416,6 +476,82 @@
         better manual choice.
       </p>
 
+      <p>
+        It helps to see that the two modes aren't describing different things.
+        Every Fresnel reflection is one curve: how much light bounces off as
+        you swing from looking straight at the surface round to looking along
+        it. Artistic mode lets you pin the two ends of that curve and bend it;
+        Physical mode computes the whole curve from a refractive index. Drag
+        the IOR below and watch the Physical curve move, then try to land the
+        Artistic one on top of it.
+      </p>
+
+      <div class="viz" id="viz-fresnel">
+        <div class="viz__head">
+          <p class="viz__title">Both modes, one curve</p>
+          <p class="viz__sub">
+            Horizontal: viewing angle, from head-on at the left to grazing at
+            the right. Vertical: how much light the surface reflects.
+          </p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="fresnel-plot" data-ratio="0.72"></canvas>
+          <canvas id="fresnel-ball" data-ratio="0.72"></canvas>
+        </div>
+        <div class="viz__legend">
+          <span><i class="legend-a"></i>Artistic — Face, Edge, Exponent</span>
+          <span><i class="legend-b"></i>Physical — from IOR</span>
+        </div>
+        <div class="viz__controls" id="fresnel-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="frIor">
+              <span>Specular IOR (Physical)</span>
+              <span class="ctl__value" data-value-for="frIor"></span>
+            </label>
+            <input type="range" id="frIor" min="1.01" max="3" step="0.01" value="1.5" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="frFace">
+              <span>Face Color (Artistic)</span>
+              <span class="ctl__value" data-value-for="frFace"></span>
+            </label>
+            <input type="range" id="frFace" min="0" max="0.6" step="0.005" value="0.04" data-fmt="3">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="frEdge">
+              <span>Edge Color (Artistic)</span>
+              <span class="ctl__value" data-value-for="frEdge"></span>
+            </label>
+            <input type="range" id="frEdge" min="0" max="1" step="0.01" value="1" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="frExp">
+              <span>Fresnel Exponent</span>
+              <span class="ctl__value" data-value-for="frExp"></span>
+            </label>
+            <input type="range" id="frExp" min="1" max="10" step="0.1" value="5" data-fmt="1">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Sphere shows</span></div>
+            <div class="seg" id="frShow" data-value="artistic">
+              <button type="button" data-val="artistic" class="is-active">Artistic</button>
+              <button type="button" data-val="physical">Physical</button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="fresnel-readout"></div>
+        <div class="viz__note">
+          <p>
+            Two things fall out of playing with this. Face Color around 0.04
+            with Edge Color at white is roughly IOR 1.5 — the ordinary
+            dielectric every non-metal starts from. And the Fresnel Exponent
+            has no counterpart in Physical mode at all: it exists precisely
+            because hand-picked colours need a shape control that a refractive
+            index supplies for free.
+          </p>
+        </div>
+      </div>
+
       <h3>Beckmann vs. GGX</h3>
       <p>
         This one is easy to miss and changes the look of every highlight in
@@ -437,6 +573,16 @@
           conversion shader makes automatically. Do the same on
           <strong>Clearcoat</strong>, which has its own separate Specular Model
           setting and also defaults to Beckmann.
+        </p>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">→ Going deeper</div>
+        <p>
+          What that tail actually looks like, why a roughness value doesn't
+          transfer between the two models, and live spheres you can light and
+          expose yourself are in
+          <a href="spec.html">Beckmann vs GGX</a>.
         </p>
       </div>
 
@@ -465,14 +611,32 @@
       <div class="callout">
         <div class="callout__title">↔ Coming from Arnold</div>
         <p>
-          <strong>Specular Rotation</strong> has no equivalent and does not
-          survive conversion — Pixar's own converter reads the parameter and
-          then discards it. PxrSurface controls the direction of the stretch
-          through <strong>Shading Tangent</strong>
+          <strong>Specular Rotation</strong> does not survive conversion —
+          Pixar's own converter reads the parameter and then discards it — so
+          if your brushed metal relied on a rotation value, you'll be
+          rebuilding it with a texture or a tangent pattern. PxrSurface
+          controls the direction of the stretch through
+          <strong>Shading Tangent</strong>
           (<code>specularAnisotropyDirection</code>) instead, and that input
           only works when something is <em>connected</em> to it. Typing a value
-          into it does nothing. If your brushed metal relied on a rotation
-          value, you'll be rebuilding that with a texture or a tangent pattern.
+          into it does nothing.
+        </p>
+        <p>
+          It's worth knowing that the two aren't really different concepts,
+          though. Arnold's own shader definition implements Specular Rotation
+          by taking a tangent vector and spinning it about the normal — the
+          same vector PxrSurface asks you for directly. The rebuild is
+          mechanical, not mysterious.
+        </p>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">→ Going deeper</div>
+        <p>
+          Why one renderer hands you an angle and the other a vector, what each
+          can and cannot express, and why re-doing your UVs can rotate your
+          highlights, are covered with interactive diagrams in
+          <a href="aniso.html">Specular Rotation vs Shading Tangent</a>.
         </p>
       </div>
 
@@ -614,10 +778,23 @@
       <div class="callout">
         <div class="callout__title">↔ Coming from Arnold</div>
         <p>
-          There is an exact conversion, and it's the one Pixar uses:
+          The conversion to use is the one Pixar uses:
           <strong>Fuzz Cone Angle = 32 × Sheen Roughness</strong>. An Arnold
           Sheen Roughness of 0.3 becomes a Cone Angle of about 9.6°. Start
-          there rather than at the default 8, then adjust by eye.
+          there rather than at the default 8, then adjust by eye — the two
+          sides are different distributions rather than the same one in
+          different units, so treat the number as a well-chosen starting point
+          and not as an exact equivalence.
+        </p>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">→ Going deeper</div>
+        <p>
+          Why the fuzz lobe has no mirror direction for a roughness to widen,
+          what a cone angle physically measures, and where the 32× rule holds
+          and where it drifts are in
+          <a href="fuzz.html">Why fuzz has a cone angle</a>.
         </p>
       </div>
     </section>
@@ -787,6 +964,57 @@
           to read as the same material, where in Arnold one depth value handled
           both. Expect a re-tune here.
         </p>
+      </div>
+
+      <div class="viz" id="viz-absorption">
+        <div class="viz__head">
+          <p class="viz__title">Why one number can't cover both bottles</p>
+          <p class="viz__sub">
+            The same glass at two thicknesses. Colour accumulates along the
+            path light takes through it, so the thick slab gets there faster.
+          </p>
+        </div>
+        <div class="viz__stage"><canvas id="absorb-plot" data-ratio="0.5"></canvas></div>
+        <div class="viz__controls" id="absorb-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="abExt">
+              <span>Extinction (PxrSurface Interior)</span>
+              <span class="ctl__value" data-value-for="abExt"></span>
+            </label>
+            <input type="range" id="abExt" min="0" max="2" step="0.01" value="0.5" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="abThin">
+              <span>Thin object — wall thickness</span>
+              <span class="ctl__value" data-value-for="abThin"></span>
+            </label>
+            <input type="range" id="abThin" min="0.1" max="3" step="0.05" value="0.5" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="abThick">
+              <span>Thick object — wall thickness</span>
+              <span class="ctl__value" data-value-for="abThick"></span>
+            </label>
+            <input type="range" id="abThick" min="0.1" max="8" step="0.05" value="3" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="abHue">
+              <span>Glass tint</span>
+              <span class="ctl__value" data-value-for="abHue"></span>
+            </label>
+            <input type="range" id="abHue" min="0" max="360" step="1" value="140" data-fmt="deg0">
+          </div>
+        </div>
+        <div class="readout" id="absorb-readout"></div>
+        <div class="viz__note">
+          <p>
+            Find an extinction that makes the thin sample read the way you
+            want, then look at the thick one — it has gone almost black. That
+            is the re-tune the callout warns about. Arnold's Transmission Depth
+            sidestepped it by describing the <em>result</em> at a reference
+            distance rather than the absorption itself.
+          </p>
+        </div>
       </div>
       <p class="muted">
         The remaining glass controls line up predictably:
@@ -965,6 +1193,54 @@
           material that arrives faintly rainbow-tinted for no reason is usually
           this.
         </p>
+      </div>
+
+      <div class="viz" id="viz-thinfilm">
+        <div class="viz__head">
+          <p class="viz__title">Thickness and angle, together</p>
+          <p class="viz__sub">
+            The field below is every combination: thickness across, viewing
+            angle down. Read a single column and you have the colour sweep a
+            film of that thickness produces as the surface turns away from you.
+          </p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="film-field" data-ratio="0.72"></canvas>
+          <canvas id="film-ball" data-ratio="0.72"></canvas>
+        </div>
+        <div class="viz__controls" id="film-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="fmThick">
+              <span>Thin Film Thickness</span>
+              <span class="ctl__value" data-value-for="fmThick"></span>
+            </label>
+            <input type="range" id="fmThick" min="0" max="2000" step="10" value="800" data-fmt="nm">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="fmIor">
+              <span>Thin Film IOR</span>
+              <span class="ctl__value" data-value-for="fmIor"></span>
+            </label>
+            <input type="range" id="fmIor" min="1.05" max="2.5" step="0.01" value="1.4" data-fmt="2">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Jump to</span></div>
+            <div class="seg" id="fmPreset" data-value="pxr">
+              <button type="button" data-val="arnold">Arnold default (0)</button>
+              <button type="button" data-val="pxr" class="is-active">PxrSurface default (800)</button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="film-readout"></div>
+        <div class="viz__note">
+          <p>
+            Click between the two defaults to see the problem the callout above
+            describes: Arnold's 0 is a flat, colourless column, and
+            PxrSurface's 800 nm is a strong green-to-magenta sweep. Nothing in
+            a converted material asks for that — it is simply what the field
+            was already set to.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -1223,5 +1499,6 @@
   <p class="muted">Last updated: 26 August 2026.</p>
 </footer>
 
+<script type="module" src="assets/js/guide.js"></script>
 </body>
 </html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-title-pl="Rotacja kontra styczna cieniowania">Specular Rotation vs Shading Tangent</title>
+<meta name="description" content="Why Arnold gives you a Specular Rotation scalar and PxrSurface gives you a Shading Tangent vector — what each one can express, and why underneath they are the same mechanism.">
+<link rel="stylesheet" href="assets/css/style.css">
+<script>
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
+</head>
+<body>
+
+<nav class="topnav topnav--i18n">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="sss.html">Subsurface scattering</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html" class="active">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker"><span lang="en">Deep dive</span><span lang="pl">Analiza</span></p>
+  <h1><span lang="en">Specular Rotation vs Shading Tangent</span><span lang="pl">Specular Rotation kontra Shading Tangent</span></h1>
+  <p class="lead" lang="en">
+    Arnold hands you a number between 0 and 1. PxrSurface hands you a vector
+    input and expects a pattern graph. It looks like two philosophies — but
+    open Arnold's own shader definition and you find it building exactly the
+    same vector, then hiding it behind the dial.
+  </p>
+  <p class="lead" lang="pl">
+    Arnold daje ci liczbę od 0 do 1. PxrSurface daje wejście wektorowe
+    i oczekuje grafu patternów. Wygląda to na dwie filozofie — ale otwórz
+    definicję shadera Arnolda, a zobaczysz, że buduje dokładnie ten sam wektor,
+    tylko chowa go za pokrętłem.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
+    <ol>
+      <li><a href="#needs-a-direction"><span lang="en">Stretched along what?</span><span lang="pl">Rozciągnięty wzdłuż czego?</span></a></li>
+      <li><a href="#arnold-way"><span lang="en">Arnold: one angle</span><span lang="pl">Arnold: jeden kąt</span></a></li>
+      <li><a href="#pxr-way"><span lang="en">PxrSurface: one vector</span><span lang="pl">PxrSurface: jeden wektor</span></a></li>
+      <li><a href="#same-machine"><span lang="en">The same machine</span><span lang="pl">Ta sama maszyneria</span></a></li>
+      <li><a href="#what-a-vector-buys"><span lang="en">What a vector buys you</span><span lang="pl">Co daje wektor</span></a></li>
+      <li><a href="#uv-dependence"><span lang="en">The UV catch</span><span lang="pl">Haczyk z UV</span></a></li>
+      <li><a href="#converting"><span lang="en">Converting a rotation</span><span lang="pl">Przenoszenie rotacji</span></a></li>
+      <li><a href="#pitfalls"><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="needs-a-direction">
+      <h2><span lang="en">Stretched along what?</span><span lang="pl">Rozciągnięty wzdłuż czego?</span></h2>
+
+      <p lang="en">
+        An isotropic highlight is round because the surface is equally rough in
+        every direction. Anisotropy says the surface is rougher one way than
+        the other — brushed metal, hair, vinyl, a machined face — and the
+        highlight smears out perpendicular to the grain.
+      </p>
+      <p lang="pl">
+        Rozbłysk izotropowy jest okrągły, bo powierzchnia jest tak samo
+        chropowata w każdym kierunku. Anizotropia mówi, że powierzchnia jest
+        bardziej chropowata w jedną stronę niż w drugą — szczotkowany metal,
+        włosy, winyl, toczona powierzchnia — a rozbłysk rozmazuje się
+        prostopadle do słojów.
+      </p>
+
+      <p lang="en">
+        Which immediately raises a question the shader cannot answer on its
+        own: <strong>rougher along which direction?</strong> A point on a
+        surface has a normal, and that's all geometry gives you for free. Every
+        anisotropic shader in every renderer therefore needs a second piece of
+        information — a direction lying in the surface. That direction is
+        called the <strong>tangent</strong>, and the entire Arnold-versus-Pixar
+        difference is just how you're asked to supply it.
+      </p>
+      <p lang="pl">
+        Co natychmiast rodzi pytanie, na które shader nie odpowie sam:
+        <strong>bardziej chropowata wzdłuż którego kierunku?</strong> Punkt na
+        powierzchni ma normalną i to wszystko, co geometria daje za darmo. Każdy
+        anizotropowy shader w każdym rendererze potrzebuje więc drugiej
+        informacji — kierunku leżącego w powierzchni. Ten kierunek nazywa się
+        <strong>styczną</strong> (tangent), a cała różnica między Arnoldem
+        a Pixarem sprowadza się do tego, jak masz go podać.
+      </p>
+
+      <div class="analogy">
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
+          Brushing a steel worktop. The normal tells you which way is "up out
+          of the counter". It says nothing about which way you dragged the
+          scourer — and that's the only thing that decides where the streaks
+          go. Somebody has to tell the shader which way you brushed.
+        </p>
+        <p lang="pl">
+          Szczotkowanie stalowego blatu. Normalna mówi, gdzie jest „w górę od
+          blatu”. Nie mówi nic o tym, w którą stronę ciągnąłeś zmywak — a to
+          jedyna rzecz decydująca, gdzie pójdą smugi. Ktoś musi powiedzieć
+          shaderowi, w którą stronę szczotkowałeś.
+        </p>
+      </div>
+    </section>
+
+    <section id="arnold-way">
+      <h2><span lang="en">Arnold: one angle on top of an assumed direction</span><span lang="pl">Arnold: jeden kąt na założonym kierunku</span></h2>
+
+      <p lang="en">
+        AiStandardSurface assumes a starting direction for you — the geometric
+        tangent that comes from the surface's own parameterisation, the same
+        thing your UVs run along. Then it gives you
+        <strong>Specular Rotation</strong> to spin that assumed direction
+        around the normal until the streaks point where you want.
+      </p>
+      <p lang="pl">
+        AiStandardSurface zakłada za ciebie kierunek startowy — styczną
+        geometryczną wynikającą z parametryzacji powierzchni, czyli to samo,
+        wzdłuż czego biegną twoje UV. Potem daje ci
+        <strong>Specular Rotation</strong>, żeby obrócić ten założony kierunek
+        wokół normalnej, aż smugi pójdą tam, gdzie chcesz.
+      </p>
+
+      <p lang="en">
+        The parameter runs 0 to 1, and that range covers a
+        <strong>full 360°</strong>. Which sounds generous until you remember
+        that a stretched highlight looks identical when you flip it end for
+        end. Half a turn brings you back to where you started, so
+        <strong>everything above 0.5 is a repeat of the bottom half</strong>.
+      </p>
+      <p lang="pl">
+        Parametr biegnie od 0 do 1, a ten zakres pokrywa
+        <strong>pełne 360°</strong>. Brzmi hojnie, dopóki nie przypomnisz sobie,
+        że rozciągnięty rozbłysk wygląda identycznie po obróceniu go o pół
+        obrotu. Połowa obrotu wraca do punktu wyjścia, więc
+        <strong>wszystko powyżej 0.5 jest powtórką dolnej połowy</strong>.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">Live render — anisotropic highlight</span><span lang="pl">Render na żywo — rozbłysk anizotropowy</span></p>
+          <p class="viz__sub"><span lang="en">Drag inside the direction map to steer the tangent, or use the sliders.</span><span lang="pl">Przeciągnij po mapie kierunku, aby obrócić styczną, albo użyj suwaków.</span></p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="aniso-ball" data-ratio="0.8"></canvas>
+          <canvas id="aniso-field" data-ratio="0.8"></canvas>
+        </div>
+        <div class="viz__controls" id="aniso-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="anRot">
+              <span><span lang="en">Specular Rotation (Arnold, 0–1)</span><span lang="pl">Specular Rotation (Arnold, 0–1)</span></span>
+              <span class="ctl__value" data-value-for="anRot"></span>
+            </label>
+            <input type="range" id="anRot" min="0" max="1" step="0.005" value="0" data-fmt="3">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="anAmount">
+              <span><span lang="en">Anisotropy amount</span><span lang="pl">Siła anizotropii</span></span>
+              <span class="ctl__value" data-value-for="anAmount"></span>
+            </label>
+            <input type="range" id="anAmount" min="0" max="0.95" step="0.01" value="0.8" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="anRough">
+              <span><span lang="en">Roughness</span><span lang="pl">Chropowatość</span></span>
+              <span class="ctl__value" data-value-for="anRough"></span>
+            </label>
+            <input type="range" id="anRough" min="0.08" max="0.6" step="0.01" value="0.25" data-fmt="2">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span><span lang="en">Tangent field</span><span lang="pl">Pole stycznych</span></span></div>
+            <div class="seg" id="anField" data-value="uniform">
+              <button type="button" data-val="uniform" class="is-active"><span lang="en">Uniform</span><span lang="pl">Jednorodne</span></button>
+              <button type="button" data-val="radial"><span lang="en">Radial</span><span lang="pl">Promieniste</span></button>
+              <button type="button" data-val="swirl"><span lang="en">Swirl</span><span lang="pl">Wirowe</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="aniso-readout"></div>
+        <div class="viz__note">
+          <p lang="en">
+            <strong>Uniform</strong> is the field Arnold's rotation dial can
+            reach. <strong>Radial</strong> and <strong>Swirl</strong> are fields
+            it cannot — no single rotation value produces them, because the
+            required angle is different at every point.
+          </p>
+          <p lang="pl">
+            <strong>Jednorodne</strong> to pole, do którego pokrętło rotacji
+            Arnolda potrafi dojść. <strong>Promieniste</strong> i
+            <strong>wirowe</strong> to pola, do których nie potrafi — żadna
+            pojedyncza wartość rotacji ich nie da, bo wymagany kąt jest inny
+            w każdym punkcie.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"Rotation 0.75 looks the same as 0.25"</span><span lang="pl">„Rotacja 0.75 wygląda tak samo jak 0.25”</span></div>
+        <p lang="en">
+          It does, and it always will. 0.25 is 90°, 0.75 is 270°, and a grain
+          direction has no head or tail — 270° is 90° seen from the other end.
+          If you are animating or texturing a rotation, use 0 to 0.5 and treat
+          the top half as wasted range.
+        </p>
+        <p lang="pl">
+          I zawsze będzie. 0.25 to 90°, 0.75 to 270°, a kierunek słojów nie ma
+          początku ani końca — 270° to 90° widziane z drugiej strony. Jeśli
+          animujesz lub teksturujesz rotację, używaj 0 do 0.5 i traktuj górną
+          połowę jako zmarnowany zakres.
+        </p>
+      </div>
+    </section>
+
+    <section id="pxr-way">
+      <h2><span lang="en">PxrSurface: one vector, no assumptions</span><span lang="pl">PxrSurface: jeden wektor, bez założeń</span></h2>
+
+      <p lang="en">
+        PxrSurface doesn't offer a rotation dial. It offers
+        <strong>Shading Tangent</strong> (<code>specularAnisotropyDirection</code>),
+        which is a vector input: you connect a pattern that produces a
+        direction, and that direction <em>is</em> the grain. There is no default
+        angle to nudge, because you supplied the whole answer rather than a
+        correction to somebody else's guess.
+      </p>
+      <p lang="pl">
+        PxrSurface nie oferuje pokrętła rotacji. Oferuje
+        <strong>Shading Tangent</strong> (<code>specularAnisotropyDirection</code>),
+        czyli wejście wektorowe: podłączasz pattern produkujący kierunek i ten
+        kierunek <em>jest</em> słojem. Nie ma domyślnego kąta do poprawienia, bo
+        podałeś całą odpowiedź, a nie korektę do cudzego założenia.
+      </p>
+
+      <p lang="en">
+        That is the whole philosophical difference, and it is the same
+        difference you meet everywhere else in RenderMan: PxrSurface expects to
+        be fed by a pattern graph, so anywhere a value could plausibly vary
+        across a surface, it takes the general form rather than the convenient
+        one. A scalar rotation is the special case where the answer happens to
+        be the same everywhere.
+      </p>
+      <p lang="pl">
+        To cała różnica filozoficzna i ta sama, którą spotykasz wszędzie indziej
+        w RenderManie: PxrSurface zakłada, że karmi go graf patternów, więc
+        wszędzie tam, gdzie wartość mogłaby sensownie zmieniać się po
+        powierzchni, przyjmuje postać ogólną, a nie wygodną. Skalarna rotacja
+        to przypadek szczególny, w którym odpowiedź akurat wszędzie jest taka
+        sama.
+      </p>
+    </section>
+
+    <section id="same-machine">
+      <h2><span lang="en">Underneath, it's the same machine</span><span lang="pl">Pod spodem to ta sama maszyneria</span></h2>
+
+      <p lang="en">
+        Here is the part that surprises people. Arnold's
+        <code>standard_surface</code> also has a
+        <strong><code>tangent</code> vector input</strong> — it is right there
+        in the shader's parameter list, defaulting to (0, 0, 0), which means
+        "use the geometric tangent". And <code>specular_rotation</code> isn't a
+        separate mechanism at all: the shader takes that tangent, rotates it
+        about the normal, and feeds the result to exactly the same anisotropic
+        BRDF that PxrSurface uses.
+      </p>
+      <p lang="pl">
+        Oto część, która ludzi zaskakuje. <code>standard_surface</code>
+        Arnolda też ma <strong>wejście wektorowe <code>tangent</code></strong> —
+        jest wprost na liście parametrów shadera, domyślnie (0, 0, 0), co
+        znaczy „użyj styczne geometrycznej”. A <code>specular_rotation</code>
+        wcale nie jest osobnym mechanizmem: shader bierze tę styczną, obraca ją
+        wokół normalnej i podaje wynik dokładnie temu samemu anizotropowemu
+        BRDF, którego używa PxrSurface.
+      </p>
+
+      <details class="math">
+        <summary><span lang="en">The actual graph, from Arnold's own definition</span><span lang="pl">Prawdziwy graf, z definicji Arnolda</span></summary>
+        <div class="formula">tangent_rotate_degree = specular_rotation × 360
+
+tangent_rotate       = rotate3d( in     = tangent,
+                                 amount = tangent_rotate_degree,
+                                 axis   = normal )
+
+main_tangent         = ifgreater( specular_anisotropy &gt; 0 )
+                         ? normalize( tangent_rotate )
+                         : tangent</div>
+        <p class="formula-where" lang="en">
+          Taken from the <code>standard_surface</code> MaterialX node definition
+          shipped with Arnold for Maya 2025. The equivalent PxrSurface setup is
+          the middle line on its own: build the vector, plug it into Shading
+          Tangent. Note also the last line — when
+          <strong>Specular Anisotropy is 0, the rotation is bypassed
+          entirely</strong>.
+        </p>
+        <p class="formula-where" lang="pl">
+          Zaczerpnięte z definicji węzła MaterialX <code>standard_surface</code>
+          dostarczanej z Arnoldem dla Maya 2025. Odpowiednik w PxrSurface to
+          sama środkowa linia: zbuduj wektor, podłącz go do Shading Tangent.
+          Zwróć też uwagę na ostatnią linię — gdy
+          <strong>Specular Anisotropy wynosi 0, rotacja jest całkowicie
+          pomijana</strong>.
+        </p>
+      </details>
+
+      <p lang="en">
+        So the honest summary is not "Arnold has rotation, Pixar has vectors".
+        It is: <strong>both renderers need a tangent vector, and both let you
+        supply one. Arnold additionally wraps a convenience dial around it,
+        and most DCC interfaces show you the dial instead of the socket.</strong>
+      </p>
+      <p lang="pl">
+        Uczciwe podsumowanie nie brzmi więc „Arnold ma rotację, Pixar wektory”.
+        Brzmi: <strong>oba renderery potrzebują wektora stycznej i oba pozwalają
+        go podać. Arnold dodatkowo owija to pokrętłem dla wygody, a większość
+        interfejsów DCC pokazuje ci pokrętło zamiast gniazda.</strong>
+      </p>
+
+      <div class="callout">
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
+          This is good news for porting. You are not learning a new concept
+          when you move to Shading Tangent — you are being handed the socket
+          that was always behind Arnold's dial. Anything you built with a
+          rotation value can be rebuilt as a vector; the reverse is not
+          generally true.
+        </p>
+        <p lang="pl">
+          To dobra wiadomość przy przenoszeniu. Przechodząc na Shading Tangent
+          nie uczysz się nowego pojęcia — dostajesz gniazdo, które zawsze było
+          za pokrętłem Arnolda. Wszystko, co zbudowałeś wartością rotacji, da
+          się odtworzyć wektorem; w drugą stronę zwykle nie.
+        </p>
+      </div>
+    </section>
+
+    <section id="what-a-vector-buys">
+      <h2><span lang="en">What a vector buys you</span><span lang="pl">Co daje wektor</span></h2>
+
+      <p lang="en">
+        A single rotation value can only say "rotate everything by this much".
+        That is fine for a brushed panel where the grain runs one way across
+        the whole surface. It falls apart the moment the grain has to
+        <em>curve</em>.
+      </p>
+      <p lang="pl">
+        Pojedyncza wartość rotacji może powiedzieć tylko „obróć wszystko o tyle”.
+        To wystarcza przy szczotkowanym panelu, gdzie słoje biegną w jedną
+        stronę po całej powierzchni. Rozsypuje się w chwili, gdy słoje muszą
+        się <em>zakrzywić</em>.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><span lang="en">You want</span><span lang="pl">Chcesz</span></th>
+              <th><span lang="en">With a rotation scalar</span><span lang="pl">Skalarem rotacji</span></th>
+              <th><span lang="en">With a tangent vector</span><span lang="pl">Wektorem stycznej</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span lang="en">Brushed flat panel</span><span lang="pl">Szczotkowany płaski panel</span></td>
+              <td class="col-arnold"><span lang="en">One value. Done.</span><span lang="pl">Jedna wartość. Gotowe.</span></td>
+              <td class="col-pxr"><span lang="en">One constant vector</span><span lang="pl">Jeden stały wektor</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Brake disc, turned metal</span><span lang="pl">Tarcza hamulcowa, toczony metal</span></td>
+              <td class="col-arnold"><span lang="en">Needs a painted rotation map</span><span lang="pl">Wymaga malowanej mapy rotacji</span></td>
+              <td class="col-pxr"><span lang="en">A radial pattern, procedurally</span><span lang="pl">Pattern promienisty, proceduralnie</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Hair, fur, fibre flow</span><span lang="pl">Włosy, futro, przepływ włókien</span></td>
+              <td class="col-arnold"><span lang="en">Awkward — the angle wraps</span><span lang="pl">Niewygodnie — kąt się zawija</span></td>
+              <td class="col-pxr"><span lang="en">The curve tangent, directly</span><span lang="pl">Styczna krzywej, wprost</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Painted flow map from Mari/Substance</span><span lang="pl">Malowana mapa przepływu z Mari/Substance</span></td>
+              <td class="col-arnold"><span lang="en">Must be baked down to an angle</span><span lang="pl">Trzeba zapiec do kąta</span></td>
+              <td class="col-pxr"><span lang="en">Plugs straight in</span><span lang="pl">Podłącza się wprost</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p lang="en">
+        The awkward row is hair. An angle has to wrap from 359° back to 0°, and
+        anything that interpolates or filters across that seam — mipmapping a
+        rotation texture, blending between two values — produces a visible
+        swipe where the grain briefly spins the wrong way. Vectors don't have
+        that seam. That alone is a decent argument for the vector being the
+        better primitive.
+      </p>
+      <p lang="pl">
+        Niewygodny wiersz to włosy. Kąt musi zawinąć się z 359° z powrotem do
+        0°, a wszystko, co interpoluje lub filtruje przez ten szew —
+        mipmapowanie tekstury rotacji, blendowanie dwóch wartości — daje
+        widoczne przetarcie, gdzie słoje na moment kręcą się w złą stronę.
+        Wektory nie mają takiego szwu. Już samo to jest niezłym argumentem za
+        tym, że wektor jest lepszym prymitywem.
+      </p>
+    </section>
+
+    <section id="uv-dependence">
+      <h2><span lang="en">The UV catch</span><span lang="pl">Haczyk z UV</span></h2>
+
+      <p lang="en">
+        Arnold's assumed starting direction comes from the geometry's own
+        parameterisation. On a polygon mesh that means it follows your UV
+        layout. Which has a consequence people discover late and painfully:
+        <strong>re-laying-out the UVs rotates your anisotropy.</strong>
+      </p>
+      <p lang="pl">
+        Założony kierunek startowy Arnolda pochodzi z parametryzacji samej
+        geometrii. Na siatce wielokątowej oznacza to, że idzie za twoim
+        rozłożeniem UV. Ma to konsekwencję, którą ludzie odkrywają późno
+        i boleśnie: <strong>przerobienie UV obraca twoją anizotropię.</strong>
+      </p>
+
+      <p lang="en">
+        A shell rotated 30° in the UV editor to pack better is a shell whose
+        brushed-metal grain is now 30° off, on that shell only, with no change
+        to any shader value. If the model comes back from another department
+        re-unwrapped, the look develops a patchwork of grain directions that
+        nobody edited.
+      </p>
+      <p lang="pl">
+        Wyspa obrócona o 30° w edytorze UV dla lepszego upakowania to wyspa,
+        której słoje szczotkowanego metalu są teraz przekręcone o 30° — tylko na
+        niej i bez zmiany jakiejkolwiek wartości w shaderze. Jeśli model wraca
+        z innego działu po ponownym rozwinięciu, look dostaje patchwork
+        kierunków, których nikt nie edytował.
+      </p>
+
+      <p lang="en">
+        An explicitly supplied tangent — computed from object space, from a
+        projection, or from a curve — doesn't move when the UVs do. This is a
+        real robustness argument in PxrSurface's favour, and it's worth
+        knowing even if you never leave Arnold: plug the
+        <code>tangent</code> input and you get the same immunity.
+      </p>
+      <p lang="pl">
+        Jawnie podana styczna — liczona z przestrzeni obiektu, z projekcji albo
+        z krzywej — nie rusza się, gdy ruszają się UV. To realny argument za
+        odpornością PxrSurface i warto go znać, nawet jeśli nigdy nie odejdziesz
+        od Arnolda: podłącz wejście <code>tangent</code>, a dostaniesz tę samą
+        odporność.
+      </p>
+    </section>
+
+    <section id="converting">
+      <h2><span lang="en">Converting a rotation to a tangent</span><span lang="pl">Przenoszenie rotacji na styczną</span></h2>
+
+      <ol class="steps">
+        <li>
+          <strong lang="en">Read the rotation as degrees.</strong>
+          <strong lang="pl">Odczytaj rotację jako stopnie.</strong>
+          <span lang="en">Multiply Arnold's value by 360. A Specular Rotation of 0.125 is 45°.</span>
+          <span lang="pl">Pomnóż wartość z Arnolda przez 360. Specular Rotation 0.125 to 45°.</span>
+        </li>
+        <li>
+          <strong lang="en">Get a starting tangent in RenderMan.</strong>
+          <strong lang="pl">Zdobądź styczną startową w RenderManie.</strong>
+          <span lang="en">A manifold or tangent-field pattern gives you the surface's own direction — the equivalent of what Arnold was assuming.</span>
+          <span lang="pl">Pattern manifoldu lub pola stycznych da ci własny kierunek powierzchni — odpowiednik tego, co Arnold zakładał.</span>
+        </li>
+        <li>
+          <strong lang="en">Rotate it about the normal by that angle.</strong>
+          <strong lang="pl">Obróć ją wokół normalnej o ten kąt.</strong>
+          <span lang="en">This is literally the <code>rotate3d</code> step from Arnold's graph above.</span>
+          <span lang="pl">To dosłownie krok <code>rotate3d</code> z grafu Arnolda powyżej.</span>
+        </li>
+        <li>
+          <strong lang="en">Plug it into Shading Tangent, then check the sign.</strong>
+          <strong lang="pl">Podłącz do Shading Tangent i sprawdź znak.</strong>
+          <span lang="en">PxrSurface's Anisotropy runs −1 to 1 where Arnold's runs 0 to 1; the negative half stretches the other way, which can save you a 90° correction.</span>
+          <span lang="pl">Anisotropy w PxrSurface biegnie od −1 do 1, a w Arnoldzie od 0 do 1; ujemna połowa rozciąga w drugą stronę, co potrafi oszczędzić poprawkę o 90°.</span>
+        </li>
+        <li>
+          <strong lang="en">Sanity check on a sphere, not the hero asset.</strong>
+          <strong lang="pl">Sprawdź na kuli, nie na finalnym assecie.</strong>
+          <span lang="en">Anisotropy direction errors are far easier to see on a primitive than on a model whose silhouette hides them.</span>
+          <span lang="pl">Błędy kierunku anizotropii dużo łatwiej zobaczyć na prymitywie niż na modelu, którego sylwetka je ukrywa.</span>
+        </li>
+      </ol>
+    </section>
+
+    <section id="pitfalls">
+      <h2><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></h2>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"I plugged in a tangent and nothing changed"</span><span lang="pl">„Podłączyłem styczną i nic się nie zmieniło”</span></div>
+        <p lang="en">
+          Check the anisotropy amount first. With anisotropy at 0 the highlight
+          is round, and a round highlight looks identical no matter which way
+          you point the grain. Arnold makes this explicit — its graph skips the
+          rotation entirely when Specular Anisotropy is 0.
+        </p>
+        <p lang="pl">
+          Sprawdź najpierw siłę anizotropii. Przy anizotropii równej 0 rozbłysk
+          jest okrągły, a okrągły rozbłysk wygląda identycznie niezależnie od
+          kierunku słojów. Arnold robi to wprost — jego graf całkowicie pomija
+          rotację, gdy Specular Anisotropy wynosi 0.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The grain flips across a seam"</span><span lang="pl">„Słoje przeskakują na szwie”</span></div>
+        <p lang="en">
+          Two UV shells laid out with opposite winding give you tangents
+          pointing opposite ways, and the highlight visibly steps at the border.
+          With an object-space or projected tangent the seam disappears,
+          because the direction no longer knows the UVs exist.
+        </p>
+        <p lang="pl">
+          Dwie wyspy UV rozłożone z przeciwnym zwrotem dają styczne skierowane
+          w przeciwne strony, a rozbłysk widocznie przeskakuje na granicy. Przy
+          stycznej z przestrzeni obiektu albo z projekcji szew znika, bo
+          kierunek przestaje wiedzieć, że UV w ogóle istnieją.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"My tangent map makes the highlight jitter"</span><span lang="pl">„Moja mapa stycznych powoduje migotanie rozbłysku”</span></div>
+        <p lang="en">
+          A vector texture that hasn't been normalised, or one stored in the
+          wrong colour space so the values were gamma-shifted, gives you a
+          direction that wobbles per-pixel. Vectors want linear data and unit
+          length — the same discipline you already apply to normal maps.
+        </p>
+        <p lang="pl">
+          Tekstura wektorowa bez normalizacji albo zapisana w złej przestrzeni
+          barw, przez co wartości przesunęła gamma, daje kierunek chwiejący się
+          piksel po pikselu. Wektory potrzebują danych liniowych i jednostkowej
+          długości — tej samej dyscypliny, którą stosujesz już do map
+          normalnych.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--trailing">
+      <span class="badge"><span lang="en">Next guide</span><span lang="pl">Następny przewodnik</span></span>
+      <h3><span lang="en">Why fuzz has a cone angle</span><span lang="pl">Dlaczego fuzz ma kąt stożka</span></h3>
+      <p class="muted" lang="en">
+        Another parameter that looks like a naming quirk and turns out to be a
+        different model underneath.
+      </p>
+      <p class="muted" lang="pl">
+        Kolejny parametr, który wygląda na dziwactwo nazewnicze, a okazuje się
+        innym modelem pod spodem.
+      </p>
+      <p><a href="fuzz.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <p lang="en">
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
+    The <code>specular_rotation</code> × 360 mapping, the <code>rotate3d</code>
+    graph and the <code>tangent</code> vector input were read from Arnold for
+    Maya 2025 — the shipped <code>standard_surface</code> MaterialX definition
+    and <code>kick -info standard_surface</code>. PxrSurface parameter names
+    follow RenderMan 27. Always sanity check against the versions installed in
+    your pipeline.
+  </p>
+  <p lang="pl">
+    Mapowanie <code>specular_rotation</code> × 360, graf <code>rotate3d</code>
+    i wejście wektorowe <code>tangent</code> odczytano z Arnolda dla Maya 2025 —
+    z dostarczanej definicji MaterialX <code>standard_surface</code> oraz
+    z <code>kick -info standard_surface</code>. Nazwy parametrów PxrSurface są
+    zgodne z RenderMan 27. Zawsze sprawdź je względem wersji zainstalowanych
+    w twoim pipelinie.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 27 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 27 sierpnia 2026.</span></p>
+</footer>
+
+<script type="module" src="assets/js/aniso.js"></script>
+</body>
+</html>

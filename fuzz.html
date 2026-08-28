@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-title-pl="Dlaczego fuzz ma kąt stożka">Why Fuzz Has a Cone Angle</title>
+<meta name="description" content="PxrSurface parameterises fuzz with a cone angle in degrees while Arnold's sheen uses a roughness. An interactive explanation of why the fuzz lobe has no mirror direction to widen, and why the two are different models rather than different units.">
+<link rel="stylesheet" href="assets/css/style.css">
+<script>
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
+</head>
+<body>
+
+<nav class="topnav topnav--i18n">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="sss.html">Subsurface scattering</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html" class="active">Fuzz</a>
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker"><span lang="en">Deep dive</span><span lang="pl">Analiza</span></p>
+  <h1><span lang="en">Why fuzz has a cone angle, not a roughness</span><span lang="pl">Dlaczego fuzz ma kąt stożka, a nie chropowatość</span></h1>
+  <p class="lead" lang="en">
+    Every other softness control in a surface shader is called roughness.
+    PxrSurface's fuzz asks for degrees instead — and that isn't Pixar being
+    contrary. Roughness describes how far a mirror direction spreads. Fuzz
+    doesn't have a mirror direction to spread.
+  </p>
+  <p class="lead" lang="pl">
+    Każda inna kontrolka miękkości w shaderze powierzchni nazywa się
+    chropowatością. Fuzz w PxrSurface prosi zamiast tego o stopnie — i nie jest
+    to złośliwość Pixara. Chropowatość opisuje, jak bardzo rozmywa się kierunek
+    lustrzany. Fuzz nie ma kierunku lustrzanego do rozmycia.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
+    <ol>
+      <li><a href="#what-fuzz-is"><span lang="en">What fuzz models</span><span lang="pl">Co modeluje fuzz</span></a></li>
+      <li><a href="#wrong-question"><span lang="en">The wrong question</span><span lang="pl">Złe pytanie</span></a></li>
+      <li><a href="#the-cone"><span lang="en">What the cone does</span><span lang="pl">Co robi stożek</span></a></li>
+      <li><a href="#arnold-calls-it-roughness"><span lang="en">Arnold calls it roughness</span><span lang="pl">Arnold nazywa to chropowatością</span></a></li>
+      <li><a href="#the-32x"><span lang="en">The 32× rule, tested</span><span lang="pl">Reguła 32×, sprawdzona</span></a></li>
+      <li><a href="#practical"><span lang="en">Degrees you can reason about</span><span lang="pl">Stopnie, które da się ogarnąć</span></a></li>
+      <li><a href="#pitfalls"><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="what-fuzz-is">
+      <h2><span lang="en">What fuzz is actually modelling</span><span lang="pl">Co fuzz naprawdę modeluje</span></h2>
+
+      <p lang="en">
+        Specular, clearcoat and glass are all the same story: light bouncing
+        off a surface made of tiny mirrors. Fuzz is not that story. Fuzz models
+        the millions of tiny fibres standing <em>up out of</em> a surface —
+        the down on a peach, the pile on velvet, the microscopic fluff on
+        unfinished cotton, the dust that has settled on everything in a room
+        that hasn't been cleaned.
+      </p>
+      <p lang="pl">
+        Specular, clearcoat i szkło to ta sama historia: światło odbijające się
+        od powierzchni zrobionej z drobnych lusterek. Fuzz to nie ta historia.
+        Fuzz modeluje miliony drobnych włókien sterczących <em>z</em>
+        powierzchni — meszek na brzoskwini, włos na aksamicie, mikroskopijny
+        puch na surowej bawełnie, kurz osiadły na wszystkim w niesprzątanym
+        pokoju.
+      </p>
+
+      <p lang="en">
+        Those fibres don't lie in the surface — they stick out of it, roughly
+        along the normal. When you look straight down at them you see almost
+        nothing: you're looking at their tips, which have hardly any area.
+        When you look across them at a glancing angle you see their entire
+        sides at once, thousands of them overlapping, and they light up. That
+        is why fuzz appears as a rim.
+      </p>
+      <p lang="pl">
+        Te włókna nie leżą w powierzchni — sterczą z niej, mniej więcej wzdłuż
+        normalnej. Gdy patrzysz na nie prosto z góry, nie widzisz prawie nic:
+        widzisz ich końcówki, które mają znikomą powierzchnię. Gdy patrzysz na
+        nie pod kątem muskającym, widzisz naraz całe ich boki, tysiące
+        nachodzących na siebie, i one się rozświetlają. Dlatego fuzz pojawia się
+        jako obwódka.
+      </p>
+
+      <div class="analogy">
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
+          A field of wheat seen from a helicopter versus seen from the edge of
+          the field. From above it's mostly soil. From the side it's a solid
+          wall of stalks catching the light. Nothing about the wheat changed —
+          only how much of each stalk you can see. Now ask yourself what
+          "roughness" would even mean for that field. The useful number is
+          <em>how far the stalks lean</em>.
+        </p>
+        <p lang="pl">
+          Pole zboża widziane z helikoptera i widziane z brzegu pola. Z góry to
+          głównie ziemia. Z boku to lita ściana źdźbeł łapiących światło. Nic
+          w zbożu się nie zmieniło — tylko to, jak dużo każdego źdźbła widzisz.
+          A teraz zapytaj siebie, co „chropowatość” miałaby dla tego pola
+          w ogóle znaczyć. Użyteczna liczba to <em>jak mocno źdźbła się
+          pochylają</em>.
+        </p>
+      </div>
+    </section>
+
+    <section id="wrong-question">
+      <h2><span lang="en">Why "roughness" is the wrong question</span><span lang="pl">Dlaczego „chropowatość” to złe pytanie</span></h2>
+
+      <p lang="en">
+        Roughness has a precise job. It widens a lobe that is centred on the
+        <strong>mirror direction</strong> — the way the light would bounce off
+        a perfect mirror. Roughness 0 means all the energy sits exactly on that
+        direction; crank it up and the lobe spreads out around it. Every
+        roughness slider you have ever touched does this.
+      </p>
+      <p lang="pl">
+        Chropowatość ma precyzyjne zadanie. Poszerza płat wyśrodkowany na
+        <strong>kierunku lustrzanym</strong> — tam, gdzie światło odbiłoby się
+        od idealnego lustra. Chropowatość 0 oznacza, że cała energia siedzi
+        dokładnie na tym kierunku; podkręć ją, a płat rozlewa się wokół niego.
+        Każdy suwak chropowatości, jakiego kiedykolwiek dotknąłeś, robi
+        właśnie to.
+      </p>
+
+      <p lang="en">
+        Now look at where the fuzz lobe actually is. Drag the light around
+        below and watch both panels. The microfacet lobe follows the mirror
+        direction obediently. The fuzz lobe ignores it completely and piles up
+        at the horizon — at grazing angles — no matter where the light goes.
+      </p>
+      <p lang="pl">
+        A teraz spójrz, gdzie naprawdę jest płat fuzzu. Poprzeciągaj światło
+        poniżej i obserwuj oba panele. Płat mikrofasetkowy posłusznie podąża za
+        kierunkiem lustrzanym. Płat fuzzu kompletnie go ignoruje i piętrzy się
+        przy horyzoncie — pod kątami muskającymi — niezależnie od tego, gdzie
+        pójdzie światło.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">Where the light goes — drag the light</span><span lang="pl">Dokąd idzie światło — przeciągnij źródło</span></p>
+          <p class="viz__sub"><span lang="en">Cross-section through the surface. The shaded shape is how much light leaves in each direction.</span><span lang="pl">Przekrój przez powierzchnię. Zacieniony kształt pokazuje, ile światła wychodzi w każdym kierunku.</span></p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="lobe-spec" data-ratio="0.72"></canvas>
+          <canvas id="lobe-fuzz" data-ratio="0.72"></canvas>
+        </div>
+        <div class="viz__legend">
+          <span><i class="legend-b"></i><span lang="en">Microfacet lobe — sits on the mirror direction</span><span lang="pl">Płat mikrofasetkowy — siedzi na kierunku lustrzanym</span></span>
+          <span><i class="legend-a"></i><span lang="en">Fuzz lobe — sits at grazing</span><span lang="pl">Płat fuzzu — siedzi przy kącie muskającym</span></span>
+        </div>
+        <div class="viz__controls" id="lobe-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="lobeLight">
+              <span><span lang="en">Light angle</span><span lang="pl">Kąt światła</span></span>
+              <span class="ctl__value" data-value-for="lobeLight"></span>
+            </label>
+            <input type="range" id="lobeLight" min="-85" max="85" step="1" value="-40" data-fmt="deg0">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="lobeRough">
+              <span><span lang="en">Microfacet roughness</span><span lang="pl">Chropowatość mikrofasetek</span></span>
+              <span class="ctl__value" data-value-for="lobeRough"></span>
+            </label>
+            <input type="range" id="lobeRough" min="0.05" max="0.7" step="0.01" value="0.25" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="lobeCone">
+              <span><span lang="en">Fuzz cone angle</span><span lang="pl">Kąt stożka fuzzu</span></span>
+              <span class="ctl__value" data-value-for="lobeCone"></span>
+            </label>
+            <input type="range" id="lobeCone" min="1" max="40" step="0.5" value="10" data-fmt="deg">
+          </div>
+        </div>
+        <div class="viz__note">
+          <p lang="en">
+            Move the roughness slider: the left lobe grows around a point that
+            moves with the light. Move the cone slider: the right lobe grows,
+            but it grows <em>from the horizon inward</em>. There is no centre
+            for a roughness to spread away from — which is exactly why calling
+            it roughness would be naming something that isn't there.
+          </p>
+          <p lang="pl">
+            Poruszaj suwakiem chropowatości: lewy płat rośnie wokół punktu, który
+            przesuwa się razem ze światłem. Poruszaj suwakiem stożka: prawy płat
+            też rośnie, ale rośnie <em>od horyzontu do środka</em>. Nie ma
+            środka, od którego chropowatość mogłaby się oddalać — i właśnie
+            dlatego nazwanie tego chropowatością byłoby nazywaniem czegoś, czego
+            nie ma.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="the-cone">
+      <h2><span lang="en">What the cone angle actually measures</span><span lang="pl">Co właściwie mierzy kąt stożka</span></h2>
+
+      <p lang="en">
+        If the fibres all stood perfectly straight up, they'd all present their
+        sides at exactly the same grazing angle, and the rim would be a
+        hairline. Real fibres lean. <strong>Fuzz Cone Angle</strong> is the
+        half-angle of the cone they lean within: how far off vertical a typical
+        fibre tilts.
+      </p>
+      <p lang="pl">
+        Gdyby wszystkie włókna stały idealnie pionowo, wszystkie pokazywałyby
+        swoje boki pod dokładnie tym samym kątem muskającym, a obwódka byłaby
+        włoskowa. Prawdziwe włókna się pochylają. <strong>Fuzz Cone Angle</strong>
+        to kąt połówkowy stożka, w którym się pochylają: jak mocno typowe włókno
+        odchyla się od pionu.
+      </p>
+
+      <p lang="en">
+        Which makes the behaviour predictable without any maths. A tight cone
+        means the fibres agree with each other, so they all light up at the
+        same viewing angle: a thin, bright, well-defined rim. A wide cone means
+        they disagree, so different fibres catch the light at different viewing
+        angles, and the effect spreads inward from the silhouette across the
+        whole surface — dimmer, because the same energy now covers far more of
+        the object.
+      </p>
+      <p lang="pl">
+        Dzięki temu zachowanie jest przewidywalne bez żadnej matematyki. Ciasny
+        stożek oznacza, że włókna są ze sobą zgodne, więc wszystkie rozświetlają
+        się pod tym samym kątem patrzenia: cienka, jasna, wyraźna obwódka.
+        Szeroki stożek oznacza, że się nie zgadzają, więc różne włókna łapią
+        światło pod różnymi kątami, a efekt rozlewa się od sylwetki do środka po
+        całej powierzchni — ciemniej, bo ta sama energia pokrywa teraz znacznie
+        więcej obiektu.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">The fibres, and what they do to the sphere</span><span lang="pl">Włókna i to, co robią z kulą</span></p>
+          <p class="viz__sub"><span lang="en">Left: a cross-section of the fibre bed. Right: the same cone angle, rendered.</span><span lang="pl">Po lewej: przekrój przez ściółkę włókien. Po prawej: ten sam kąt stożka, wyrenderowany.</span></p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="fibre-diagram" data-ratio="0.75"></canvas>
+          <canvas id="fuzz-ball" data-ratio="0.75"></canvas>
+        </div>
+        <div class="viz__controls" id="cone-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="coneAngle">
+              <span><span lang="en">Fuzz Cone Angle</span><span lang="pl">Fuzz Cone Angle</span></span>
+              <span class="ctl__value" data-value-for="coneAngle"></span>
+            </label>
+            <input type="range" id="coneAngle" min="1" max="45" step="0.5" value="8" data-fmt="deg">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="coneGain">
+              <span><span lang="en">Fuzz Gain</span><span lang="pl">Fuzz Gain</span></span>
+              <span class="ctl__value" data-value-for="coneGain"></span>
+            </label>
+            <input type="range" id="coneGain" min="0" max="1" step="0.01" value="1" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="coneExp">
+              <span><span lang="en">Exposure</span><span lang="pl">Ekspozycja</span></span>
+              <span class="ctl__value" data-value-for="coneExp"></span>
+            </label>
+            <input type="range" id="coneExp" min="-2" max="5" step="0.1" value="1" data-fmt="stops">
+          </div>
+        </div>
+        <div class="viz__note">
+          <p lang="en">
+            Fuzz only on the sphere — no diffuse, no specular — so you can see
+            the lobe on its own. Notice that widening the cone doesn't make the
+            rim softer so much as it makes it <em>bigger and weaker</em>. That's
+            the distinction a roughness slider could never communicate.
+          </p>
+          <p lang="pl">
+            Na kuli sam fuzz — bez diffuse, bez speculara — żeby zobaczyć płat
+            w izolacji. Zauważ, że poszerzenie stożka nie tyle zmiękcza obwódkę,
+            co czyni ją <em>większą i słabszą</em>. Tego rozróżnienia suwak
+            chropowatości nigdy nie byłby w stanie przekazać.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="arnold-calls-it-roughness">
+      <h2><span lang="en">But Arnold calls it roughness</span><span lang="pl">Ale Arnold nazywa to chropowatością</span></h2>
+
+      <p lang="en">
+        It does — <strong>Sheen Roughness</strong>, a 0-to-1 value defaulting to
+        0.3. And this is worth being precise about, because the usual
+        explanation ("same thing, different units") is wrong in a way that
+        costs you time.
+      </p>
+      <p lang="pl">
+        Owszem — <strong>Sheen Roughness</strong>, wartość od 0 do 1, domyślnie
+        0.3. I warto tu być precyzyjnym, bo zwykłe wyjaśnienie („to samo, inne
+        jednostki”) jest błędne w sposób, który kosztuje czas.
+      </p>
+
+      <p lang="en">
+        Arnold's sheen is a <em>different distribution</em>. Its shader graph
+        routes Sheen Roughness into a dedicated sheen BSDF built on the
+        Conty–Kulla velvet distribution — a formulation that also peaks at
+        grazing, but reaches that peak by a different curve than a cone of
+        fibres does. So the two controls are not the same quantity measured in
+        different units. They are two models that happen to produce a similar
+        look, each with its own natural parameter.
+      </p>
+      <p lang="pl">
+        Sheen Arnolda to <em>inny rozkład</em>. Jego graf shadera prowadzi Sheen
+        Roughness do dedykowanego BSDF-a sheen opartego na rozkładzie velvet
+        Conty'ego–Kulli — sformułowaniu, które też ma szczyt przy kącie
+        muskającym, ale dochodzi do niego inną krzywą niż stożek włókien. Te
+        dwie kontrolki nie są więc tą samą wielkością w innych jednostkach. To
+        dwa modele, które przypadkiem dają podobny look, każdy z własnym
+        naturalnym parametrem.
+      </p>
+
+      <div class="callout">
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
+          Which of the two names is "right" is a matter of taste, but they
+          reveal different priorities. Arnold's picks the name an artist already
+          recognises, so the slider needs no explanation. Pixar's picks the name
+          that describes the actual quantity, so the number means something you
+          could measure with a microscope. You pay for Arnold's convenience the
+          moment you need to know what the value physically means — and for
+          Pixar's honesty the moment you meet the parameter cold.
+        </p>
+        <p lang="pl">
+          To, która z tych nazw jest „słuszna”, to kwestia gustu, ale zdradzają
+          różne priorytety. Arnold wybiera nazwę, którą artysta już zna, więc
+          suwak nie wymaga tłumaczenia. Pixar wybiera nazwę opisującą faktyczną
+          wielkość, więc liczba znaczy coś, co dałoby się zmierzyć mikroskopem.
+          Za wygodę Arnolda płacisz w chwili, gdy musisz wiedzieć, co wartość
+          fizycznie oznacza — a za uczciwość Pixara w chwili, gdy spotykasz ten
+          parametr po raz pierwszy.
+        </p>
+      </div>
+    </section>
+
+    <section id="the-32x">
+      <h2><span lang="en">The 32× rule, tested</span><span lang="pl">Reguła 32×, sprawdzona</span></h2>
+
+      <p lang="en">
+        The standard conversion is
+        <strong>Cone Angle = 32 × Sheen Roughness</strong>, which turns
+        Arnold's default 0.3 into about 9.6°. It's a good starting number. But
+        since the two sides are different models, it is a <em>fit</em>, not a
+        conversion — and a fit is only accurate over the range it was fitted
+        for.
+      </p>
+      <p lang="pl">
+        Standardowe przeliczenie to
+        <strong>Cone Angle = 32 × Sheen Roughness</strong>, co zamienia domyślne
+        0.3 z Arnolda na około 9.6°. To dobry punkt wyjścia. Ale skoro obie
+        strony to różne modele, jest to <em>dopasowanie</em>, a nie
+        przeliczenie — a dopasowanie jest dokładne tylko w zakresie, dla którego
+        je zrobiono.
+      </p>
+
+      <p lang="en">
+        So test it. The sphere below is Arnold's sheen on the left and
+        PxrSurface's fuzz on the right, with the 32× rule linking them. Sweep
+        the roughness through its range and watch the seam: around the default
+        it is genuinely hard to see, and out at the extremes the two halves
+        drift apart. Unlink them to hunt for a better match at whatever value
+        you actually work at.
+      </p>
+      <p lang="pl">
+        Więc to sprawdź. Kula poniżej to sheen Arnolda po lewej i fuzz
+        PxrSurface po prawej, powiązane regułą 32×. Przejedź chropowatością
+        przez cały zakres i obserwuj szew: w okolicy domyślnej wartości jest go
+        naprawdę trudno dostrzec, a na skrajach połówki się rozjeżdżają. Rozłącz
+        je, żeby poszukać lepszego dopasowania przy wartości, przy której
+        faktycznie pracujesz.
+      </p>
+
+      <div class="viz">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">Arnold sheen (left) · PxrSurface fuzz (right)</span><span lang="pl">Sheen Arnolda (lewo) · Fuzz PxrSurface (prawo)</span></p>
+        </div>
+        <div class="viz__stage"><canvas id="compare-ball" data-ratio="0.6"></canvas></div>
+        <div class="viz__legend">
+          <span><i class="legend-arnold"></i><span lang="en">Conty–Kulla sheen, driven by roughness</span><span lang="pl">Sheen Conty–Kulla, sterowany chropowatością</span></span>
+          <span><i class="legend-pxr"></i><span lang="en">Cone of fibres, driven by degrees</span><span lang="pl">Stożek włókien, sterowany stopniami</span></span>
+        </div>
+        <div class="viz__controls" id="cmp-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="cmpSheen">
+              <span><span lang="en">Sheen Roughness (Arnold)</span><span lang="pl">Sheen Roughness (Arnold)</span></span>
+              <span class="ctl__value" data-value-for="cmpSheen"></span>
+            </label>
+            <input type="range" id="cmpSheen" min="0.02" max="1" step="0.01" value="0.3" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="cmpCone">
+              <span><span lang="en">Fuzz Cone Angle (PxrSurface)</span><span lang="pl">Fuzz Cone Angle (PxrSurface)</span></span>
+              <span class="ctl__value" data-value-for="cmpCone"></span>
+            </label>
+            <input type="range" id="cmpCone" min="0.5" max="45" step="0.5" value="9.6" data-fmt="deg">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span><span lang="en">Link</span><span lang="pl">Powiązanie</span></span></div>
+            <div class="seg" id="cmpLink" data-value="linked">
+              <button type="button" data-val="linked" class="is-active"><span lang="en">32× rule</span><span lang="pl">Reguła 32×</span></button>
+              <button type="button" data-val="free"><span lang="en">Free</span><span lang="pl">Swobodnie</span></button>
+            </div>
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="cmpExp">
+              <span><span lang="en">Exposure</span><span lang="pl">Ekspozycja</span></span>
+              <span class="ctl__value" data-value-for="cmpExp"></span>
+            </label>
+            <input type="range" id="cmpExp" min="-2" max="5" step="0.1" value="1" data-fmt="stops">
+          </div>
+        </div>
+        <div class="readout" id="cmp-readout"></div>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"I converted with 32× and the velvet went flat"</span><span lang="pl">„Przeliczyłem przez 32× i aksamit spłaszczał”</span></div>
+        <p lang="en">
+          Velvet lives at the high end, where the fit is weakest. A Sheen
+          Roughness of 0.8 maps to 25.6°, which is a very wide cone — the
+          effect stops being a rim and becomes an all-over haze. If the
+          reference had a defined edge of light along the silhouette, come back
+          down and set the cone by eye instead of by formula.
+        </p>
+        <p lang="pl">
+          Aksamit żyje na górnym końcu, gdzie dopasowanie jest najsłabsze. Sheen
+          Roughness 0.8 mapuje się na 25.6°, czyli bardzo szeroki stożek —
+          efekt przestaje być obwódką i staje się mgiełką po całości. Jeśli
+          referencja miała wyraźną krawędź światła wzdłuż sylwetki, zejdź niżej
+          i ustaw stożek na oko, a nie ze wzoru.
+        </p>
+      </div>
+    </section>
+
+    <section id="practical">
+      <h2><span lang="en">Degrees you can reason about</span><span lang="pl">Stopnie, które da się ogarnąć</span></h2>
+
+      <p lang="en">
+        The quiet advantage of an angle is that it survives being thought
+        about. "Roughness 0.4" tells you nothing you can check. "The fibres
+        lean up to 13°" is a claim about the world — you can look at a
+        macro photograph of the real material and form an opinion.
+      </p>
+      <p lang="pl">
+        Cichą zaletą kąta jest to, że znosi zastanawianie się nad nim.
+        „Chropowatość 0.4” nie mówi nic, co dałoby się sprawdzić. „Włókna
+        pochylają się do 13°” to twierdzenie o świecie — możesz spojrzeć na
+        makrofotografię prawdziwego materiału i wyrobić sobie zdanie.
+      </p>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th><span lang="en">Material</span><span lang="pl">Materiał</span></th>
+              <th><span lang="en">Cone angle, roughly</span><span lang="pl">Kąt stożka, z grubsza</span></th>
+              <th><span lang="en">Why</span><span lang="pl">Dlaczego</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span lang="en">Velvet, new</span><span lang="pl">Aksamit, nowy</span></td>
+              <td class="col-pxr">4–8°</td>
+              <td><span lang="en">Cut pile, all standing to attention. Tight bright rim.</span><span lang="pl">Runo cięte, wszystko na baczność. Ciasna, jasna obwódka.</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Velvet, crushed or worn</span><span lang="pl">Aksamit zgnieciony lub zużyty</span></td>
+              <td class="col-pxr">15–25°</td>
+              <td><span lang="en">The pile has been pushed over and no longer agrees with itself.</span><span lang="pl">Runo zostało przygniecione i nie jest już ze sobą zgodne.</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Peach skin, apricot</span><span lang="pl">Skórka brzoskwini, morela</span></td>
+              <td class="col-pxr">10–18°</td>
+              <td><span lang="en">Fine down growing in every direction at once.</span><span lang="pl">Delikatny meszek rosnący we wszystkie strony naraz.</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Dusty surface</span><span lang="pl">Zakurzona powierzchnia</span></td>
+              <td class="col-pxr">25–40°</td>
+              <td><span lang="en">Not fibres at all — settled particles with no common direction.</span><span lang="pl">To wcale nie włókna — osiadłe cząstki bez wspólnego kierunku.</span></td>
+            </tr>
+            <tr>
+              <td><span lang="en">Brushed cotton, flannel</span><span lang="pl">Bawełna szczotkowana, flanela</span></td>
+              <td class="col-pxr">12–20°</td>
+              <td><span lang="en">Raised nap, softer and less regular than velvet.</span><span lang="pl">Podniesiony włos, miększy i mniej regularny niż aksamit.</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p lang="en">
+        Treat these as a starting bracket to light and judge, not as truth —
+        the number that matters is the one that matches your reference under
+        your key light. But starting from "is this fabric more like new velvet
+        or more like dust?" is a far better question than guessing at a
+        roughness.
+      </p>
+      <p lang="pl">
+        Traktuj to jako punkt wyjścia do oświetlenia i oceny, a nie jako prawdę
+        objawioną — liczy się ta wartość, która zgadza się z twoją referencją
+        przy twoim świetle kluczowym. Ale zaczynanie od pytania „czy ta tkanina
+        jest bliżej nowego aksamitu, czy bliżej kurzu?” jest dużo lepsze niż
+        zgadywanie chropowatości.
+      </p>
+    </section>
+
+    <section id="pitfalls">
+      <h2><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></h2>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"I typed 0.3 into Fuzz Cone Angle"</span><span lang="pl">„Wpisałem 0.3 w Fuzz Cone Angle”</span></div>
+        <p lang="en">
+          Then you asked for a cone of a third of a degree, and the fuzz has
+          effectively vanished — a rim too thin to survive a single pixel. This
+          is the single most common fuzz bug when porting, because 0.3 is a
+          perfectly sensible-looking roughness and a nonsensical angle. The
+          field wants tens, not tenths.
+        </p>
+        <p lang="pl">
+          To poprosiłeś o stożek jednej trzeciej stopnia i fuzz praktycznie
+          zniknął — obwódka zbyt cienka, by przetrwać jeden piksel. To
+          najczęstszy błąd z fuzzem przy przenoszeniu, bo 0.3 wygląda na
+          całkiem sensowną chropowatość, a jest bezsensownym kątem. To pole chce
+          dziesiątek, nie dziesiątych.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"Fuzz looks fine on the sphere and disappears on the character"</span><span lang="pl">„Fuzz wygląda dobrze na kuli i znika na postaci”</span></div>
+        <p lang="en">
+          A narrow cone only shows where the surface turns away from camera. A
+          sphere has a full range of angles, so it always displays the effect
+          beautifully; a flat-on garment panel may contain almost no grazing
+          angles at all. Judge fuzz on the actual silhouette you'll be
+          rendering, in the actual lighting.
+        </p>
+        <p lang="pl">
+          Wąski stożek pokazuje się tylko tam, gdzie powierzchnia odwraca się od
+          kamery. Kula ma pełen zakres kątów, więc zawsze pięknie prezentuje
+          efekt; płasko ustawiony panel ubrania może w ogóle nie zawierać kątów
+          muskających. Oceniaj fuzz na tej sylwetce, którą naprawdę będziesz
+          renderować, i w docelowym świetle.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"Raising the cone angle made it dimmer, not softer"</span><span lang="pl">„Zwiększenie kąta stożka przyciemniło, a nie zmiękczyło”</span></div>
+        <p lang="en">
+          That's correct behaviour, not a bug. The same light is being spread
+          over more of the surface, so the peak drops. If you want it wider
+          <em>and</em> as bright, raise Fuzz Gain to compensate — the two
+          controls are doing genuinely different jobs.
+        </p>
+        <p lang="pl">
+          To poprawne zachowanie, nie błąd. To samo światło rozkłada się na
+          większej części powierzchni, więc szczyt spada. Jeśli chcesz szerzej
+          <em>i</em> tak samo jasno, podnieś Fuzz Gain jako kompensację — te
+          dwie kontrolki robią naprawdę różne rzeczy.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--trailing">
+      <span class="badge"><span lang="en">Related guide</span><span lang="pl">Powiązany przewodnik</span></span>
+      <h3><span lang="en">AiStandardSurface → PxrSurface</span><span lang="pl">AiStandardSurface → PxrSurface</span></h3>
+      <p class="muted" lang="en">
+        The full parameter-by-parameter walkthrough, with Fuzz in its place
+        alongside every other layer.
+      </p>
+      <p class="muted" lang="pl">
+        Pełne przejście parametr po parametrze, z fuzzem na swoim miejscu obok
+        wszystkich pozostałych warstw.
+      </p>
+      <p><a href="guide.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <p lang="en">
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
+    The left-hand sphere uses the published Conty–Kulla sheen distribution,
+    which is the model Arnold's <code>sheen_bsdf</code> is built on — confirmed
+    from the <code>standard_surface</code> definition shipped with Arnold for
+    Maya 2025. The right-hand sphere uses a cone-of-fibres distribution written
+    for this page to show how a cone-angle parameter behaves; it is
+    <strong>not</strong> Pixar's fuzz implementation, so treat the seam as an
+    illustration of the two shapes rather than a calibration. The 32× figure
+    and the PxrSurface parameter names follow RenderMan 27. Always sanity check
+    against the versions installed in your pipeline.
+  </p>
+  <p lang="pl">
+    Lewa kula używa opublikowanego rozkładu sheen Conty'ego–Kulli, czyli modelu,
+    na którym oparty jest <code>sheen_bsdf</code> Arnolda — potwierdzone
+    z definicji <code>standard_surface</code> dostarczanej z Arnoldem dla
+    Maya 2025. Prawa kula używa rozkładu stożka włókien napisanego na potrzeby
+    tej strony, by pokazać, jak zachowuje się parametr kąta stożka;
+    <strong>nie</strong> jest to implementacja fuzzu Pixara, więc traktuj szew
+    jako ilustrację dwóch kształtów, a nie kalibrację. Współczynnik 32×
+    i nazwy parametrów PxrSurface są zgodne z RenderMan 27. Zawsze sprawdź je
+    względem wersji zainstalowanych w twoim pipelinie.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 27 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 27 sierpnia 2026.</span></p>
+</footer>
+
+<script type="module" src="assets/js/fuzz.js"></script>
+</body>
+</html>

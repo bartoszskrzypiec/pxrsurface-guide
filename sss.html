@@ -16,6 +16,9 @@
     <a href="guide.html">AiStandardSurface → PxrSurface</a>
     <a href="sss.html" class="active">Subsurface scattering</a>
     <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
   </div>
 </nav>
 
@@ -125,6 +128,54 @@
         how each shader lets you specify that distance, per colour channel, and
         in what units.
       </p>
+    
+      <div class="viz" id="viz-randomwalk">
+        <div class="viz__head">
+          <p class="viz__title">The packed party, made literal</p>
+          <p class="viz__sub">
+            A cross-section of the material. Light enters at the top, changes
+            direction every time it hits something, and either finds its way
+            back out or runs out of energy trying.
+          </p>
+        </div>
+        <div class="viz__stage"><canvas id="walk-canvas" data-ratio="0.5"></canvas></div>
+        <div class="viz__controls" id="walk-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="wkMfp">
+              <span>Mean free path</span>
+              <span class="ctl__value" data-value-for="wkMfp"></span>
+            </label>
+            <input type="range" id="wkMfp" min="0.02" max="1" step="0.01" value="0.18" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="wkPaths">
+              <span>Light paths shown</span>
+              <span class="ctl__value" data-value-for="wkPaths"></span>
+            </label>
+            <input type="range" id="wkPaths" min="4" max="60" step="1" value="26" data-fmt="0">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Jump to a material</span></div>
+            <div class="seg" id="wkPreset" data-value="skin">
+              <button type="button" data-val="milk">Milk</button>
+              <button type="button" data-val="skin" class="is-active">Skin</button>
+              <button type="button" data-val="wax">Wax</button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="walk-readout"></div>
+        <div class="viz__note">
+          <p>
+            Short mean free path and the light is knocked about so often it
+            barely gets away from where it went in &mdash; that is a dense, opaque
+            material. Lengthen it and the same paths wander far sideways before
+            surfacing, which is what makes wax and jade glow the way they do.
+            Nothing about the light changed; only how far it gets between
+            collisions.
+          </p>
+        </div>
+      </div>
+
     </section>
 
     <section id="radius-vs-dmfp">
@@ -199,6 +250,57 @@
         unit — it's "all three channels travel the same distance, and Scale
         decides what that distance is."
       </p>
+    
+      <div class="viz" id="viz-radius-dmfp">
+        <div class="viz__head">
+          <p class="viz__title">The swap, both ways</p>
+          <p class="viz__sub">
+            Set the Arnold side and read the PxrSurface side. Then switch the
+            wiring to see what you get when the two fields go in backwards
+            &mdash; the mistake this section warns about.
+          </p>
+        </div>
+        <div class="viz__stage"><canvas id="convert-canvas" data-ratio="0.42"></canvas></div>
+        <div class="viz__controls" id="convert-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="cvScale">
+              <span>Subsurface Scale (Arnold)</span>
+              <span class="ctl__value" data-value-for="cvScale"></span>
+            </label>
+            <input type="range" id="cvScale" min="0.05" max="5" step="0.05" value="1" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="cvR">
+              <span>Radius &mdash; red</span>
+              <span class="ctl__value" data-value-for="cvR"></span>
+            </label>
+            <input type="range" id="cvR" min="0.05" max="1" step="0.01" value="0.85" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="cvG">
+              <span>Radius &mdash; green</span>
+              <span class="ctl__value" data-value-for="cvG"></span>
+            </label>
+            <input type="range" id="cvG" min="0.05" max="1" step="0.01" value="0.56" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="cvB">
+              <span>Radius &mdash; blue</span>
+              <span class="ctl__value" data-value-for="cvB"></span>
+            </label>
+            <input type="range" id="cvB" min="0.05" max="1" step="0.01" value="0.40" data-fmt="2">
+          </div>
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Wire it up</span></div>
+            <div class="seg" id="cvSwap" data-value="right">
+              <button type="button" data-val="right" class="is-active">Correctly</button>
+              <button type="button" data-val="swapped">Swapped</button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="convert-readout"></div>
+      </div>
+
     </section>
 
     <section id="unit-length">
@@ -337,6 +439,53 @@
           went.
         </p>
       </div>
+    
+      <div class="viz" id="viz-channels">
+        <div class="viz__head">
+          <p class="viz__title">Three colours, three distances</p>
+          <p class="viz__sub">
+            The same backlit slab under each default. Each channel is plotted
+            by how far it gets before it is absorbed.
+          </p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="chan-profile" data-ratio="0.75"></canvas>
+          <canvas id="chan-slab" data-ratio="0.75"></canvas>
+        </div>
+        <div class="viz__legend">
+          <span><i style="background:#e05a4a"></i>Red</span>
+          <span><i style="background:#4ea85e"></i>Green</span>
+          <span><i style="background:#4a7fd0"></i>Blue</span>
+        </div>
+        <div class="viz__controls" id="chan-ctl">
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Mean Free Path Color</span></div>
+            <div class="seg" id="chDefault" data-value="pxr">
+              <button type="button" data-val="arnold">Arnold (1, 1, 1)</button>
+              <button type="button" data-val="pxr" class="is-active">PxrSurface skin default</button>
+            </div>
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="chDist">
+              <span>Mean Free Path Distance</span>
+              <span class="ctl__value" data-value-for="chDist"></span>
+            </label>
+            <input type="range" id="chDist" min="0.2" max="4" step="0.05" value="1.4" data-fmt="2">
+          </div>
+        </div>
+        <div class="readout" id="chan-readout"></div>
+        <div class="viz__note">
+          <p>
+            On Arnold's neutral default all three curves sit on top of each
+            other and the slab glows grey &mdash; neutral wax. On PxrSurface's
+            default red reaches roughly twice as far as blue, so the outer part
+            of the glow has no blue left in it. That reddening at the edge is
+            the whole reason the Pixar default reads as flesh straight out of
+            the box.
+          </p>
+        </div>
+      </div>
+
     </section>
 
     <section id="models">
@@ -515,6 +664,56 @@
         against a backlit ear and you'll see immediately what the red channel is
         for.
       </p>
+    
+      <div class="viz" id="viz-mmfp">
+        <div class="viz__head">
+          <p class="viz__title">Three lobes, one skin</p>
+          <p class="viz__sub">
+            Each range plotted separately, with their sum on top. Loaded with
+            PxrSurface's own default colours and distances &mdash; pale and tight,
+            warm and mid, red and deep.
+          </p>
+        </div>
+        <div class="viz__stage viz__stage--split">
+          <canvas id="mmfp-plot" data-ratio="0.75"></canvas>
+          <canvas id="mmfp-slab" data-ratio="0.75"></canvas>
+        </div>
+        <div class="viz__controls" id="mmfp-ctl">
+          <div class="ctl">
+            <label class="ctl__label" for="mmShort">
+              <span>Short Gain &mdash; near white, distance 5</span>
+              <span class="ctl__value" data-value-for="mmShort"></span>
+            </label>
+            <input type="range" id="mmShort" min="0" max="1" step="0.01" value="0.5" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="mmMed">
+              <span>Gain &mdash; warm off-white, distance 10</span>
+              <span class="ctl__value" data-value-for="mmMed"></span>
+            </label>
+            <input type="range" id="mmMed" min="0" max="1" step="0.01" value="0.5" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="mmLong">
+              <span>Long Gain &mdash; pure red, distance 20</span>
+              <span class="ctl__value" data-value-for="mmLong"></span>
+            </label>
+            <input type="range" id="mmLong" min="0" max="1" step="0.01" value="0.5" data-fmt="2">
+          </div>
+        </div>
+        <div class="readout" id="mmfp-readout"></div>
+        <div class="viz__note">
+          <p>
+            Pull the long gain to zero and the deep red disappears &mdash; the slab
+            goes waxy and dead. Pull the short gain down instead and it loses
+            the pale surface sheen that makes skin look like skin rather than
+            like a red lamp. One mean free path has to average all three of
+            these into a single answer, which is exactly why it can never
+            quite get there.
+          </p>
+        </div>
+      </div>
+
     </section>
 
     <section id="single-scatter">
@@ -866,5 +1065,6 @@
   <p class="muted">Last updated: 27 August 2026.</p>
 </footer>
 
+<script type="module" src="assets/js/sss.js"></script>
 </body>
 </html>

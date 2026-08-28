@@ -16,6 +16,9 @@
     <a href="guide.html">AiStandardSurface → PxrSurface</a>
     <a href="sss.html">Subsurface scattering</a>
     <a href="lama.html" class="active">PxrSurface vs Lama</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
   </div>
 </nav>
 
@@ -277,6 +280,54 @@
           </tbody>
         </table>
       </div>
+    
+      <div class="viz" id="viz-operators">
+        <div class="viz__head">
+          <p class="viz__title">Where the light goes, per operator</p>
+          <p class="viz__sub">
+            A hundred units of light arrive at one point on the surface. Each
+            operator divides them up differently &mdash; and one of them doesn't
+            divide them at all.
+          </p>
+        </div>
+        <div class="viz__stage"><canvas id="ops-canvas" data-ratio="0.34"></canvas></div>
+        <div class="viz__controls" id="ops-ctl">
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span>Operator</span></div>
+            <div class="seg" id="opMode" data-value="layer">
+              <button type="button" data-val="mix">LamaMix</button>
+              <button type="button" data-val="layer" class="is-active">LamaLayer</button>
+              <button type="button" data-val="add">LamaAdd</button>
+            </div>
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="opTop">
+              <span>Top / material 2 weight</span>
+              <span class="ctl__value" data-value-for="opTop"></span>
+            </label>
+            <input type="range" id="opTop" min="0" max="1" step="0.01" value="0.6" data-fmt="2">
+          </div>
+          <div class="ctl">
+            <label class="ctl__label" for="opBase">
+              <span>Base / material 1 weight</span>
+              <span class="ctl__value" data-value-for="opBase"></span>
+            </label>
+            <input type="range" id="opBase" min="0" max="1" step="0.01" value="1" data-fmt="2">
+          </div>
+        </div>
+        <div class="readout" id="ops-readout"></div>
+        <div class="viz__note">
+          <p>
+            Mix and Layer can never exceed the light that arrived: Mix splits
+            it by the mask, and Layer gives the base only what the top didn't
+            take. Add has no such arithmetic in it &mdash; push both weights up and
+            the bar runs off the end, which is a surface returning more light
+            than fell on it. Nothing in the render will error; it will just
+            quietly glow.
+          </p>
+        </div>
+      </div>
+
     </section>
 
     <section id="lookup">
@@ -536,5 +587,6 @@
   <p class="muted">Last updated: 26 August 2026.</p>
 </footer>
 
+<script type="module" src="assets/js/lama.js"></script>
 </body>
 </html>
