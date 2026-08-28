@@ -1,15 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Subsurface Scattering Guide</title>
+<title data-title-pl="Subsurface scattering — przewodnik">Subsurface Scattering Guide</title>
 <meta name="description" content="A plain-language guide to subsurface scattering for artists moving from Arnold's AiStandardSurface to RenderMan's PxrSurface: mean free path, Radius vs DMFP, Unit Length, and the scattering models.">
 <link rel="stylesheet" href="assets/css/style.css">
+<script>
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
 </head>
 <body>
 
-<nav class="topnav">
+<nav class="topnav topnav--i18n">
   <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
   <div class="topnav__links">
     <a href="index.html">Home</a>
@@ -20,68 +28,99 @@
     <a href="aniso.html">Anisotropy</a>
     <a href="fuzz.html">Fuzz</a>
   </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
 </nav>
 
 <header class="hero">
-  <p class="section-kicker">Deep dive</p>
-  <h1>Subsurface scattering</h1>
-  <p class="lead">
+  <p class="section-kicker"><span lang="en">Deep dive</span><span lang="pl">Analiza</span></p>
+  <h1><span lang="en">Subsurface scattering</span><span lang="pl">Subsurface scattering</span></h1>
+  <p class="lead" lang="en">
     Every other layer in a surface shader takes a weight between 0 and 1.
     Subsurface takes <em>distances</em> — which makes it the one layer where the
     scale your scene is modelled at changes the result. That, plus a set of
     parameter names that actively mislead, is why subsurface is the layer people
     lose the most time on when they change renderer.
   </p>
+  <p class="lead" lang="pl">
+    Każda inna warstwa w shaderze powierzchni przyjmuje wagę między 0 a 1.
+    Subsurface przyjmuje <em>odległości</em> — co czyni ją jedyną warstwą, w
+    której skala, w jakiej modelowana jest twoja scena, zmienia wynik. To,
+    plus zestaw nazw parametrów, które aktywnie wprowadzają w błąd, sprawia,
+    że subsurface to warstwa, na której ludzie tracą najwięcej czasu przy
+    zmianie renderera.
+  </p>
 </header>
 
 <div class="guide-layout">
   <aside class="toc">
-    <h2>On this page</h2>
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
     <ol>
-      <li><a href="#what-sss-is">What's actually happening</a></li>
-      <li><a href="#mean-free-path">Mean free path</a></li>
-      <li><a href="#radius-vs-dmfp">Radius vs DMFP</a></li>
-      <li><a href="#unit-length">The multiplier Arnold doesn't have</a></li>
-      <li><a href="#color-channels">Why red bleeds furthest</a></li>
-      <li><a href="#models">Choosing a model</a></li>
-      <li><a href="#mmfp">Multiple Mean Free Paths</a></li>
-      <li><a href="#single-scatter">Single Scatter is separate</a></li>
-      <li><a href="#energy">Subsurface and the diffuse underneath</a></li>
-      <li><a href="#advanced">The rest of the panel</a></li>
-      <li><a href="#recipe">Conversion recipe</a></li>
-      <li><a href="#pitfalls">Common pitfalls</a></li>
+      <li><a href="#what-sss-is"><span lang="en">What's actually happening</span><span lang="pl">Co się naprawdę dzieje</span></a></li>
+      <li><a href="#mean-free-path"><span lang="en">Mean free path</span><span lang="pl">Mean free path</span></a></li>
+      <li><a href="#radius-vs-dmfp"><span lang="en">Radius vs DMFP</span><span lang="pl">Radius kontra DMFP</span></a></li>
+      <li><a href="#unit-length"><span lang="en">The multiplier Arnold doesn't have</span><span lang="pl">Mnożnik, którego Arnold nie ma</span></a></li>
+      <li><a href="#color-channels"><span lang="en">Why red bleeds furthest</span><span lang="pl">Dlaczego czerwony sięga najdalej</span></a></li>
+      <li><a href="#models"><span lang="en">Choosing a model</span><span lang="pl">Wybór modelu</span></a></li>
+      <li><a href="#mmfp"><span lang="en">Multiple Mean Free Paths</span><span lang="pl">Multiple Mean Free Paths</span></a></li>
+      <li><a href="#single-scatter"><span lang="en">Single Scatter is separate</span><span lang="pl">Single Scatter jest osobny</span></a></li>
+      <li><a href="#energy"><span lang="en">Subsurface and the diffuse underneath</span><span lang="pl">Subsurface i diffuse pod spodem</span></a></li>
+      <li><a href="#advanced"><span lang="en">The rest of the panel</span><span lang="pl">Reszta panelu</span></a></li>
+      <li><a href="#recipe"><span lang="en">Conversion recipe</span><span lang="pl">Przepis konwersji</span></a></li>
+      <li><a href="#pitfalls"><span lang="en">Common pitfalls</span><span lang="pl">Typowe pułapki</span></a></li>
     </ol>
   </aside>
 
   <main class="guide-content">
 
     <section id="what-sss-is">
-      <h2>What's actually happening</h2>
-      <p>
+      <h2><span lang="en">What's actually happening</span><span lang="pl">Co się naprawdę dzieje</span></h2>
+      <p lang="en">
         On most materials, light arrives at the surface and leaves from the same
         spot — it either bounces off the top or scatters back out of the paint
         immediately. Subsurface materials don't do that. Light goes
         <em>in</em>, ricochets around underneath for a while, and comes back out
         somewhere else entirely.
       </p>
+      <p lang="pl">
+        Na większości materiałów światło dociera do powierzchni i opuszcza ją
+        w tym samym miejscu — albo odbija się od wierzchu, albo natychmiast
+        rozprasza z powrotem z farby. Materiały subsurface tego nie robią.
+        Światło idzie <em>do środka</em>, odbija się tam przez chwilę i
+        wychodzi zupełnie gdzie indziej.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           Shining a flashlight through your fingers. The glow doesn't appear
           where the beam hits — it appears all around, spread out and turned
           red, because the light travelled sideways through the flesh before it
           found a way out.
         </p>
+        <p lang="pl">
+          Świecenie latarką przez palce. Poświata nie pojawia się tam, gdzie
+          trafia wiązka — pojawia się dookoła, rozlana i zaczerwieniona, bo
+          światło podróżowało w bok przez ciało, zanim znalazło drogę na
+          zewnątrz.
+        </p>
       </div>
-      <p>
+      <p lang="en">
         That "travelled sideways" is the whole thing. To describe it, the shader
         can't just ask <em>how much</em> — it has to ask <em>how far</em>. And
         the moment a parameter is a real distance rather than a 0–1 weight, it
         has to be measured against something.
       </p>
+      <p lang="pl">
+        To „podróżowanie w bok" to cała sprawa. Żeby to opisać, shader nie
+        może po prostu zapytać <em>ile</em> — musi zapytać <em>jak
+        daleko</em>. A w chwili, gdy parametr jest prawdziwą odległością
+        zamiast wagą 0–1, musi być zmierzony względem czegoś.
+      </p>
       <div class="callout">
-        <div class="callout__title">↔ Why this layer is different</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Why this layer is different</span><span lang="pl">Dlaczego ta warstwa jest inna</span></div>
+        <p lang="en">
           Roughness, gains, weights — none of them care how big your model is. A
           roughness of 0.2 is 0.2 whether your head is 20 units tall or 200.
           Subsurface is the exception: it is the only layer in either shader
@@ -89,16 +128,29 @@
           Almost every "why does my skin look nothing like it did in Arnold"
           story traces back to that one sentence.
         </p>
+        <p lang="pl">
+          Roughness, gainy, wagi — żadnemu z nich nie zależy, jak duży jest
+          twój model. Roughness 0.2 to 0.2 bez względu na to, czy twoja głowa
+          ma 20 jednostek wysokości, czy 200. Subsurface to wyjątek: to
+          jedyna warstwa w obu shaderach, gdzie <strong>skala, w jakiej
+          modelowałeś, zmienia render</strong>. Niemal każda historia „czemu
+          moja skóra w ogóle nie wygląda jak w Arnoldzie" sprowadza się do
+          tego jednego zdania.
+        </p>
       </div>
     </section>
 
     <section id="mean-free-path">
       <h2>Mean free path</h2>
-      <p>
+      <p lang="en">
         Both shaders describe the interior of a material with the same physical
         idea, so it's worth getting straight before touching any parameter.
       </p>
-      <p>
+      <p lang="pl">
+        Oba shadery opisują wnętrze materiału tą samą fizyczną ideą, więc
+        warto ją sobie wyjaśnić, zanim tkniesz jakikolwiek parametr.
+      </p>
+      <p lang="en">
         The <strong>mean free path</strong> is the average distance light
         travels inside the material before it hits something and changes
         direction. Short mean free path means light gets knocked about
@@ -106,36 +158,68 @@
         free path means light travels a long way between collisions — wax, jade,
         a thin slice of marble.
       </p>
+      <p lang="pl">
+        <strong>Mean free path</strong> (średnia droga swobodna) to średnia
+        odległość, jaką światło przebywa wewnątrz materiału, zanim na coś
+        trafi i zmieni kierunek. Krótki mean free path oznacza, że światło
+        jest ciągle odbijane i nie odchodzi daleko — mleko, ceramika, gruba
+        farba. Długi mean free path oznacza, że światło pokonuje długą drogę
+        między zderzeniami — wosk, jadeit, cienki plaster marmuru.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           Crossing a room. In an empty corridor you walk a long way before you
           have to change direction. At a packed party you get a metre before you
           have to sidestep someone. Same you, same walking — the difference is
           how densely packed the obstacles are. Mean free path is the average
           length of one of those stretches.
         </p>
+        <p lang="pl">
+          Przechodzenie przez pokój. W pustym korytarzu idziesz długo, zanim
+          musisz zmienić kierunek. Na zatłoczonej imprezie masz metr, zanim
+          musisz kogoś ominąć. Ten sam ty, to samo chodzenie — różnica polega
+          na tym, jak gęsto upakowane są przeszkody. Mean free path to średnia
+          długość jednego z tych odcinków.
+        </p>
       </div>
-      <p>
+      <p lang="en">
         You will also see this written as <strong>DMFP</strong>, which is where
         PxrSurface's internal parameter name <code>subsurfaceDmfp</code> comes
         from. In the interface it's labelled
         <strong>Mean Free Path Distance</strong> — same thing, and that longer
         label is the more honest one, because it tells you it's a distance.
       </p>
-      <p class="muted">
+      <p lang="pl">
+        Zobaczysz to też zapisane jako <strong>DMFP</strong>, skąd bierze się
+        wewnętrzna nazwa parametru PxrSurface <code>subsurfaceDmfp</code>. W
+        interfejsie ma etykietę <strong>Mean Free Path Distance</strong> — to
+        samo, a ta dłuższa etykieta jest bardziej uczciwa, bo mówi ci, że to
+        odległość.
+      </p>
+      <p class="muted" lang="en">
         Everything else in this guide is bookkeeping on top of this one idea:
         how each shader lets you specify that distance, per colour channel, and
         in what units.
       </p>
-    
+      <p class="muted" lang="pl">
+        Wszystko inne w tym przewodniku to księgowość na tej jednej idei: jak
+        każdy shader pozwala określić tę odległość, per kanał koloru, i w
+        jakich jednostkach.
+      </p>
+
       <div class="viz" id="viz-randomwalk">
         <div class="viz__head">
-          <p class="viz__title">The packed party, made literal</p>
-          <p class="viz__sub">
+          <p class="viz__title"><span lang="en">The packed party, made literal</span><span lang="pl">Zatłoczona impreza, dosłownie</span></p>
+          <p class="viz__sub" lang="en">
             A cross-section of the material. Light enters at the top, changes
             direction every time it hits something, and either finds its way
             back out or runs out of energy trying.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Przekrój przez materiał. Światło wchodzi u góry, zmienia kierunek
+            za każdym razem, gdy na coś trafi, i albo znajduje drogę na
+            zewnątrz, albo wyczerpuje energię, próbując.
           </p>
         </div>
         <div class="viz__stage"><canvas id="walk-canvas" data-ratio="0.5"></canvas></div>
@@ -149,23 +233,23 @@
           </div>
           <div class="ctl">
             <label class="ctl__label" for="wkPaths">
-              <span>Light paths shown</span>
+              <span><span lang="en">Light paths shown</span><span lang="pl">Pokazane ścieżki światła</span></span>
               <span class="ctl__value" data-value-for="wkPaths"></span>
             </label>
             <input type="range" id="wkPaths" min="4" max="60" step="1" value="26" data-fmt="0">
           </div>
           <div class="ctl ctl--seg">
-            <div class="ctl__label"><span>Jump to a material</span></div>
+            <div class="ctl__label"><span lang="en">Jump to a material</span><span lang="pl">Przejdź do materiału</span></div>
             <div class="seg" id="wkPreset" data-value="skin">
-              <button type="button" data-val="milk">Milk</button>
-              <button type="button" data-val="skin" class="is-active">Skin</button>
-              <button type="button" data-val="wax">Wax</button>
+              <button type="button" data-val="milk"><span lang="en">Milk</span><span lang="pl">Mleko</span></button>
+              <button type="button" data-val="skin" class="is-active"><span lang="en">Skin</span><span lang="pl">Skóra</span></button>
+              <button type="button" data-val="wax"><span lang="en">Wax</span><span lang="pl">Wosk</span></button>
             </div>
           </div>
         </div>
         <div class="readout" id="walk-readout"></div>
         <div class="viz__note">
-          <p>
+          <p lang="en">
             Short mean free path and the light is knocked about so often it
             barely gets away from where it went in &mdash; that is a dense, opaque
             material. Lengthen it and the same paths wander far sideways before
@@ -173,65 +257,92 @@
             Nothing about the light changed; only how far it gets between
             collisions.
           </p>
+          <p lang="pl">
+            Krótki mean free path i światło jest odbijane tak często, że
+            ledwie oddala się od miejsca, w które weszło — to gęsty,
+            nieprzezroczysty materiał. Wydłuż go, a te same ścieżki wędrują
+            daleko w bok, zanim wypłyną na powierzchnię, co sprawia, że wosk
+            i jadeit świecą tak, jak świecą. Nic w świetle się nie zmieniło;
+            zmienia się tylko to, jak daleko dochodzi między zderzeniami.
+          </p>
         </div>
       </div>
 
     </section>
 
     <section id="radius-vs-dmfp">
-      <h2>Radius vs DMFP</h2>
-      <p>
+      <h2><span lang="en">Radius vs DMFP</span><span lang="pl">Radius kontra DMFP</span></h2>
+      <p lang="en">
         Here's the good news, which nobody tells you: <strong>the two shaders
         use exactly the same decomposition.</strong> Both split the scattering
         distance into a single number multiplied by a colour.
       </p>
-      <p>
+      <p lang="pl">
+        Oto dobra wiadomość, której nikt ci nie powie: <strong>oba shadery
+        używają dokładnie tego samego rozkładu.</strong> Oba dzielą
+        odległość rozpraszania na pojedynczą liczbę mnożoną przez kolor.
+      </p>
+      <p lang="en">
         You need a colour because red, green and blue don't travel the same
         distance through flesh — more on that below. And you want a single
         number on top so you can scale all three at once without re-picking the
         colour. Both Arnold and PxrSurface landed on that design. They just
         named the two halves in a way that makes them look unrelated.
       </p>
+      <p lang="pl">
+        Potrzebujesz koloru, bo czerwony, zielony i niebieski nie przebywają
+        tej samej odległości przez ciało — więcej o tym niżej. A chcesz mieć
+        na to jedną liczbę, żeby przeskalować wszystkie trzy naraz bez
+        ponownego dobierania koloru. Zarówno Arnold, jak i PxrSurface
+        wylądowały na tym samym projekcie. Po prostu nazwały obie połówki
+        tak, że wyglądają na niepowiązane.
+      </p>
 
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th>Role</th>
+              <th><span lang="en">Role</span><span lang="pl">Rola</span></th>
               <th>AiStandardSurface</th>
               <th>PxrSurface</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>The single number (a distance)</td>
+              <td><span lang="en">The single number (a distance)</span><span lang="pl">Pojedyncza liczba (odległość)</span></td>
               <td class="col-arnold">Subsurface <strong>Scale</strong></td>
               <td class="col-pxr">Mean Free Path <strong>Distance</strong> <code>subsurfaceDmfp</code></td>
             </tr>
             <tr>
-              <td>The per-channel colour</td>
+              <td><span lang="en">The per-channel colour</span><span lang="pl">Kolor per kanał</span></td>
               <td class="col-arnold">Subsurface <strong>Radius</strong></td>
               <td class="col-pxr">Mean Free Path <strong>Color</strong> <code>subsurfaceDmfpColor</code></td>
             </tr>
             <tr>
-              <td>Unit scale correction</td>
-              <td class="col-arnold"><em>none</em></td>
+              <td><span lang="en">Unit scale correction</span><span lang="pl">Korekta skali jednostek</span></td>
+              <td class="col-arnold"><em><span lang="en">none</span><span lang="pl">brak</span></em></td>
               <td class="col-pxr"><strong>Unit Length</strong> <code>unitLength</code></td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <p>
+      <p lang="en">
         So the mapping is a straight swap — and it's the one Pixar's own
         conversion shader performs:
         <strong>Radius</strong> → <strong>Mean Free Path Color</strong>, and
         <strong>Scale</strong> → <strong>Mean Free Path Distance</strong>.
       </p>
+      <p lang="pl">
+        Więc mapowanie to prosta zamiana — i dokładnie tę wykonuje własny
+        shader konwersji Pixara: <strong>Radius</strong> →
+        <strong>Mean Free Path Color</strong>, a <strong>Scale</strong> →
+        <strong>Mean Free Path Distance</strong>.
+      </p>
 
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           Read that mapping twice, because the names fight it.
           <strong>"Radius" sounds like a distance and is actually the
           colour.</strong>
@@ -242,22 +353,44 @@
           is badly off in a way you can't tune out, check these two fields
           haven't been swapped before you change anything else.
         </p>
+        <p lang="pl">
+          Przeczytaj to mapowanie dwa razy, bo nazwy z nim walczą.
+          <strong>„Radius" brzmi jak odległość, a jest tak naprawdę
+          kolorem.</strong> <strong>„Scale" brzmi jak mnożnik, a jest tak
+          naprawdę odległością.</strong> Oba instynkty są błędne, i to w
+          przeciwnych kierunkach, więc zgadywanie daje materiał zarówno o
+          złym kolorze, jak i złej głębi. Jeśli przekonwertowany materiał
+          subsurface jest źle w sposób, którego nie da się wyregulować,
+          sprawdź, czy te dwa pola nie zostały zamienione miejscami, zanim
+          zmienisz cokolwiek innego.
+        </p>
       </div>
 
-      <p class="muted">
+      <p class="muted" lang="en">
         One consequence worth noting: because Radius is a colour, an Arnold
         Radius of <code>(1, 1, 1)</code> is not "radius one" in any meaningful
         unit — it's "all three channels travel the same distance, and Scale
         decides what that distance is."
       </p>
-    
+      <p class="muted" lang="pl">
+        Jedna konsekwencja warta odnotowania: skoro Radius jest kolorem,
+        Arnoldowe Radius <code>(1, 1, 1)</code> nie znaczy „promień jeden" w
+        żadnej sensownej jednostce — znaczy „wszystkie trzy kanały
+        przebywają tę samą odległość, a Scale decyduje, jaka to odległość".
+      </p>
+
       <div class="viz" id="viz-radius-dmfp">
         <div class="viz__head">
-          <p class="viz__title">The swap, both ways</p>
-          <p class="viz__sub">
+          <p class="viz__title"><span lang="en">The swap, both ways</span><span lang="pl">Zamiana, w obie strony</span></p>
+          <p class="viz__sub" lang="en">
             Set the Arnold side and read the PxrSurface side. Then switch the
             wiring to see what you get when the two fields go in backwards
             &mdash; the mistake this section warns about.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Ustaw stronę Arnolda i odczytaj stronę PxrSurface. Potem
+            przełącz okablowanie, by zobaczyć, co dostajesz, gdy oba pola
+            idą na odwrót &mdash; błąd, przed którym ostrzega ta sekcja.
           </p>
         </div>
         <div class="viz__stage"><canvas id="convert-canvas" data-ratio="0.42"></canvas></div>
@@ -271,30 +404,30 @@
           </div>
           <div class="ctl">
             <label class="ctl__label" for="cvR">
-              <span>Radius &mdash; red</span>
+              <span>Radius &mdash; <span lang="en">red</span><span lang="pl">czerwony</span></span>
               <span class="ctl__value" data-value-for="cvR"></span>
             </label>
             <input type="range" id="cvR" min="0.05" max="1" step="0.01" value="0.85" data-fmt="2">
           </div>
           <div class="ctl">
             <label class="ctl__label" for="cvG">
-              <span>Radius &mdash; green</span>
+              <span>Radius &mdash; <span lang="en">green</span><span lang="pl">zielony</span></span>
               <span class="ctl__value" data-value-for="cvG"></span>
             </label>
             <input type="range" id="cvG" min="0.05" max="1" step="0.01" value="0.56" data-fmt="2">
           </div>
           <div class="ctl">
             <label class="ctl__label" for="cvB">
-              <span>Radius &mdash; blue</span>
+              <span>Radius &mdash; <span lang="en">blue</span><span lang="pl">niebieski</span></span>
               <span class="ctl__value" data-value-for="cvB"></span>
             </label>
             <input type="range" id="cvB" min="0.05" max="1" step="0.01" value="0.40" data-fmt="2">
           </div>
           <div class="ctl ctl--seg">
-            <div class="ctl__label"><span>Wire it up</span></div>
+            <div class="ctl__label"><span lang="en">Wire it up</span><span lang="pl">Okabluj to</span></div>
             <div class="seg" id="cvSwap" data-value="right">
-              <button type="button" data-val="right" class="is-active">Correctly</button>
-              <button type="button" data-val="swapped">Swapped</button>
+              <button type="button" data-val="right" class="is-active"><span lang="en">Correctly</span><span lang="pl">Poprawnie</span></button>
+              <button type="button" data-val="swapped"><span lang="en">Swapped</span><span lang="pl">Zamienione</span></button>
             </div>
           </div>
         </div>
@@ -304,21 +437,29 @@
     </section>
 
     <section id="unit-length">
-      <h2>The multiplier Arnold doesn't have</h2>
-      <p>
+      <h2><span lang="en">The multiplier Arnold doesn't have</span><span lang="pl">Mnożnik, którego Arnold nie ma</span></h2>
+      <p lang="en">
         PxrSurface has a third term in the chain, and it lives somewhere you
         won't find by scrolling the Subsurface section: <strong>Unit Length</strong>,
         over on the <strong>Scattering Globals</strong> page. It defaults to
         <strong>0.1</strong>.
       </p>
-      <p>The full picture is therefore:</p>
+      <p lang="pl">
+        PxrSurface ma trzeci człon w tym łańcuchu i mieszka gdzieś, gdzie nie
+        znajdziesz go, przewijając sekcję Subsurface: <strong>Unit
+        Length</strong> (długość jednostkowa), na stronie
+        <strong>Scattering Globals</strong>. Domyślnie stoi na
+        <strong>0.1</strong>.
+      </p>
+      <p lang="en">The full picture is therefore:</p>
+      <p lang="pl">Pełny obraz wygląda więc tak:</p>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
               <th></th>
-              <th>How the distance is built</th>
-              <th>With defaults</th>
+              <th><span lang="en">How the distance is built</span><span lang="pl">Jak buduje się odległość</span></th>
+              <th><span lang="en">With defaults</span><span lang="pl">Z wartościami domyślnymi</span></th>
             </tr>
           </thead>
           <tbody>
@@ -335,15 +476,22 @@
           </tbody>
         </table>
       </div>
-      <p>
+      <p lang="en">
         Which is the point: <strong>the two shaders ship with almost the same
         effective scattering distance.</strong> PxrSurface's Mean Free Path
         Distance of 10 looks alarmingly large next to Arnold's Scale of 1, but
         Unit Length quietly divides it back down by ten.
       </p>
+      <p lang="pl">
+        I o to chodzi: <strong>oba shadery przychodzą z niemal tą samą
+        efektywną odległością rozpraszania.</strong> Mean Free Path Distance
+        PxrSurface równe 10 wygląda alarmująco duże obok Scale Arnolda
+        równego 1, ale Unit Length po cichu dzieli je z powrotem przez
+        dziesięć.
+      </p>
       <div class="callout">
-        <div class="callout__title">A correction to an earlier version of these guides</div>
-        <p>
+        <div class="callout__title"><span lang="en">A correction to an earlier version of these guides</span><span lang="pl">Korekta do wcześniejszej wersji tych przewodników</span></div>
+        <p lang="en">
           An earlier version of the <a href="guide.html#subsurface">transition
           guide</a> said that copying your Radius across and leaving the
           distance at 10 meant "light travelling ten times further than it did
@@ -351,10 +499,18 @@
           factor of ten. The real trap is the next paragraph, and it's a bigger
           one.
         </p>
+        <p lang="pl">
+          Wcześniejsza wersja <a href="guide.html#subsurface">przewodnika
+          przejścia</a> mówiła, że skopiowanie Radius i pozostawienie
+          odległości na 10 oznacza „światło podróżujące dziesięć razy dalej
+          niż w Arnoldzie". To było błędne — pomijało Unit Length, które
+          znosi ten czynnik dziesięć. Prawdziwa pułapka jest w następnym
+          akapicie i jest większa.
+        </p>
       </div>
 
-      <h3>What Unit Length is actually for</h3>
-      <p>
+      <h3><span lang="en">What Unit Length is actually for</span><span lang="pl">Do czego naprawdę służy Unit Length</span></h3>
+      <p lang="en">
         Unit Length exists because Mean Free Path numbers are conventionally
         quoted in <strong>millimetres</strong> — that's how measured scattering
         data for skin, marble and milk is published. But scenes aren't modelled
@@ -362,18 +518,33 @@
         <strong>centimetres</strong>, so that a millimetre-flavoured MFP value
         lands correctly in a centimetre world.
       </p>
+      <p lang="pl">
+        Unit Length istnieje, bo liczby Mean Free Path są zwyczajowo podawane
+        w <strong>milimetrach</strong> — tak publikowane są zmierzone dane
+        rozpraszania dla skóry, marmuru i mleka. Ale sceny nie są modelowane
+        w milimetrach. Domyślne 0.1 RenderMana zakłada, że twoja scena jest w
+        <strong>centymetrach</strong>, tak by wartość MFP w milimetrach
+        wylądowała poprawnie w świecie centymetrów.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           A recipe written in grams being cooked in a kitchen that only has cup
           measures. The recipe isn't wrong and the kitchen isn't wrong, but
           something has to do the conversion — and if nothing does, you don't
           get a slightly-off cake, you get a completely different one.
         </p>
+        <p lang="pl">
+          Przepis napisany w gramach, gotowany w kuchni, która ma tylko
+          miarki w postaci filiżanek. Przepis nie jest błędny i kuchnia nie
+          jest błędna, ale coś musi wykonać konwersję — a jeśli nic tego nie
+          robi, nie dostajesz lekko nieudanego ciasta, dostajesz zupełnie
+          inne ciasto.
+        </p>
       </div>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           Arnold has no equivalent parameter. Its Radius and Scale are simply in
           scene units, whatever those happen to be, and it makes no assumption
           about what you modelled in. So the very first thing to check when
@@ -384,20 +555,40 @@
           adjusting Mean Free Path Color will fix that, which is exactly why
           people spend an afternoon on it.
         </p>
+        <p lang="pl">
+          Arnold nie ma odpowiadającego parametru. Jego Radius i Scale są po
+          prostu w jednostkach sceny, jakiekolwiek by one były, i nie robi
+          żadnego założenia co do tego, w czym modelowałeś. Więc pierwszą
+          rzeczą do sprawdzenia przy konwersji materiału subsurface wcale nie
+          jest parametr subsurface — to <strong>w jakiej skali modelowana
+          jest twoja scena</strong> i czy Unit Length jej odpowiada. Modeluj
+          w metrach i zostaw Unit Length na 0.1, a twoje rozpraszanie będzie
+          przesunięte o czynnik 100. Żadne dostrajanie Mean Free Path Color
+          tego nie naprawi, i właśnie dlatego ludzie spędzają na tym
+          popołudnie.
+        </p>
       </div>
-      <p class="muted">
+      <p class="muted" lang="en">
         Unit Length also applies to the Single Scatter lobe, not just Subsurface
         — it's on the Scattering Globals page because it governs both.
+      </p>
+      <p class="muted" lang="pl">
+        Unit Length dotyczy też płata Single Scatter, nie tylko Subsurface —
+        jest na stronie Scattering Globals, bo rządzi obydwoma.
       </p>
     </section>
 
     <section id="color-channels">
-      <h2>Why red bleeds furthest</h2>
-      <p>
+      <h2><span lang="en">Why red bleeds furthest</span><span lang="pl">Dlaczego czerwony sięga najdalej</span></h2>
+      <p lang="en">
         Look at the two shaders' default colours side by side and one of them is
         clearly opinionated:
       </p>
-      <ul>
+      <p lang="pl">
+        Spójrz na domyślne kolory obu shaderów obok siebie, a jeden z nich
+        jest wyraźnie stronniczy:
+      </p>
+      <ul lang="en">
         <li>
           Arnold's <strong>Subsurface Radius</strong> defaults to
           <strong>(1, 1, 1)</strong> — perfectly neutral. All three channels
@@ -409,25 +600,52 @@
           green, then blue, roughly two-to-one from red to blue.
         </li>
       </ul>
-      <p>
+      <ul lang="pl">
+        <li>
+          <strong>Subsurface Radius</strong> Arnolda domyślnie wynosi
+          <strong>(1, 1, 1)</strong> — idealnie neutralnie. Wszystkie trzy
+          kanały przebywają tę samą odległość.
+        </li>
+        <li>
+          <strong>Mean Free Path Color</strong> PxrSurface domyślnie wynosi
+          <strong>(0.851, 0.557, 0.395)</strong> — czerwony sięga najdalej,
+          potem zielony, potem niebieski, w przybliżeniu dwa do jednego od
+          czerwonego do niebieskiego.
+        </li>
+      </ul>
+      <p lang="en">
         That PxrSurface default isn't arbitrary. It's approximately skin. Blood
         and tissue absorb blue and green light quickly while letting red through,
         so red light penetrates deepest and travels furthest before it comes
         back out. Every soft red glow you've seen at the edge of a backlit ear
         is that ratio.
       </p>
+      <p lang="pl">
+        Ten default PxrSurface nie jest przypadkowy. To w przybliżeniu skóra.
+        Krew i tkanka szybko pochłaniają niebieskie i zielone światło,
+        przepuszczając czerwone, więc czerwone światło penetruje najgłębiej i
+        przebywa najdłuższą drogę, zanim wyjdzie z powrotem. Każda miękka
+        czerwona poświata, jaką widziałeś na krawędzi podświetlonego ucha, to
+        właśnie ta proporcja.
+      </p>
       <div class="analogy">
-        <p class="section-kicker">Think of it as</p>
-        <p>
+        <p class="section-kicker"><span lang="en">Think of it as</span><span lang="pl">Pomyśl o tym tak</span></p>
+        <p lang="en">
           Putting a fingertip over a torch. The light that makes it through is
           red — not because the torch is red, but because red is the only part
           of it that survived the trip. The blue and green were stopped much
           earlier.
         </p>
+        <p lang="pl">
+          Przyłożenie opuszka palca do latarki. Światło, które przez niego
+          przechodzi, jest czerwone — nie dlatego, że latarka jest czerwona,
+          tylko dlatego, że czerwony to jedyna część, która przetrwała
+          podróż. Niebieski i zielony zostały zatrzymane dużo wcześniej.
+        </p>
       </div>
       <div class="callout">
-        <div class="callout__title">↔ Coming from Arnold</div>
-        <p>
+        <div class="callout__title">↔ <span lang="en">Coming from Arnold</span><span lang="pl">Przesiadka z Arnolda</span></div>
+        <p lang="en">
           This is why a fresh PxrSurface subsurface lobe already reads as flesh
           while a fresh Arnold one reads as neutral wax. Neither is a better
           default — they start from different assumptions. Practically: if your
@@ -438,14 +656,30 @@
           will strip the reddening out and leave you wondering where the warmth
           went.
         </p>
+        <p lang="pl">
+          Dlatego świeży płat subsurface w PxrSurface od razu czyta się jako
+          ciało, a świeży w Arnoldzie jako neutralny wosk. Żaden default nie
+          jest lepszy — zaczynają od różnych założeń. Praktycznie: jeśli
+          twój materiał z Arnolda miał starannie dobrany kolor Radius,
+          przenieś go, a <em>nadpiszesz</em> skórzany default PxrSurface, co
+          jest poprawne. Ale jeśli twój materiał z Arnolda zostawiał Radius
+          neutralny, bo look pochodził skądinąd, skopiowanie
+          <code>(1, 1, 1)</code> wprost zdejmie zaczerwienienie i zostawi
+          cię w niepewności, gdzie podziało się ciepło.
+        </p>
       </div>
-    
+
       <div class="viz" id="viz-channels">
         <div class="viz__head">
-          <p class="viz__title">Three colours, three distances</p>
-          <p class="viz__sub">
+          <p class="viz__title"><span lang="en">Three colours, three distances</span><span lang="pl">Trzy kolory, trzy odległości</span></p>
+          <p class="viz__sub" lang="en">
             The same backlit slab under each default. Each channel is plotted
             by how far it gets before it is absorbed.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Ta sama podświetlona płyta pod każdym defaultem. Każdy kanał jest
+            wykreślony wg tego, jak daleko dochodzi, zanim zostanie
+            pochłonięty.
           </p>
         </div>
         <div class="viz__stage viz__stage--split">
@@ -453,16 +687,16 @@
           <canvas id="chan-slab" data-ratio="0.75"></canvas>
         </div>
         <div class="viz__legend">
-          <span><i style="background:#e05a4a"></i>Red</span>
-          <span><i style="background:#4ea85e"></i>Green</span>
-          <span><i style="background:#4a7fd0"></i>Blue</span>
+          <span><i style="background:#e05a4a"></i><span lang="en">Red</span><span lang="pl">Czerwony</span></span>
+          <span><i style="background:#4ea85e"></i><span lang="en">Green</span><span lang="pl">Zielony</span></span>
+          <span><i style="background:#4a7fd0"></i><span lang="en">Blue</span><span lang="pl">Niebieski</span></span>
         </div>
         <div class="viz__controls" id="chan-ctl">
           <div class="ctl ctl--seg">
             <div class="ctl__label"><span>Mean Free Path Color</span></div>
             <div class="seg" id="chDefault" data-value="pxr">
               <button type="button" data-val="arnold">Arnold (1, 1, 1)</button>
-              <button type="button" data-val="pxr" class="is-active">PxrSurface skin default</button>
+              <button type="button" data-val="pxr" class="is-active"><span lang="en">PxrSurface skin default</span><span lang="pl">Domyślny skórzany PxrSurface</span></button>
             </div>
           </div>
           <div class="ctl">
@@ -475,13 +709,21 @@
         </div>
         <div class="readout" id="chan-readout"></div>
         <div class="viz__note">
-          <p>
+          <p lang="en">
             On Arnold's neutral default all three curves sit on top of each
             other and the slab glows grey &mdash; neutral wax. On PxrSurface's
             default red reaches roughly twice as far as blue, so the outer part
             of the glow has no blue left in it. That reddening at the edge is
             the whole reason the Pixar default reads as flesh straight out of
             the box.
+          </p>
+          <p lang="pl">
+            Na neutralnym defaulcie Arnolda wszystkie trzy krzywe leżą jedna
+            na drugiej, a płyta świeci na szaro &mdash; neutralny wosk. Na
+            defaulcie PxrSurface czerwony sięga mniej więcej dwa razy dalej
+            niż niebieski, więc zewnętrzna część poświaty nie ma już w sobie
+            niebieskiego. To zaczerwienienie na krawędzi to cały powód, dla
+            którego default Pixara od razu czyta się jako ciało.
           </p>
         </div>
       </div>
