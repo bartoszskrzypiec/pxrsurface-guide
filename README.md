@@ -16,6 +16,7 @@ background.
 - `guide.html` — AiStandardSurface → PxrSurface transition guide *(interactive)*
 - `sss.html` — subsurface scattering deep dive (mean free path, Radius vs DMFP, Unit Length) *(interactive)*
 - `lama.html` — PxrSurface vs MaterialX Lama comparison guide *(interactive)*
+- `lama-debug.html` — when a Lama graph goes wrong: the wiring mistakes artists actually hit, arranged by symptom *(interactive, EN/PL)*
 - `spec.html` — Beckmann vs GGX: what a specular model is, and why roughness doesn't transfer *(interactive, EN/PL)*
 - `aniso.html` — Specular Rotation vs Shading Tangent: why one renderer hands you an angle and the other a vector *(interactive, EN/PL)*
 - `fuzz.html` — why fuzz has a cone angle rather than a roughness *(interactive, EN/PL)*
@@ -34,14 +35,14 @@ background.
 - [x] Beckmann vs GGX deep dive (interactive)
 - [x] Specular Rotation vs Shading Tangent deep dive (interactive)
 - [x] Fuzz cone angle deep dive (interactive)
+- [x] Lama troubleshooting deep dive (interactive)
 - [x] Interactive widgets on the three original guides
 - [ ] Comparison renders in `assets/img/`
-- [ ] Polish translations for the four original pages (only the three
-      interactive pages are bilingual so far)
+- [x] Polish translations — every page is now bilingual
 
 ## Interactive widgets
 
-Nine widgets across the guides, all hand-written and dependency-free. Each one
+Ten widgets across the guides, all hand-written and dependency-free. Each one
 exists because the thing it explains is a curve, a direction or a process that
 prose can only gesture at:
 
@@ -56,6 +57,7 @@ prose can only gesture at:
 | `sss.html` | Per-channel falloff | Why red bleeds furthest, and how Arnold's neutral default differs from Pixar's skin one |
 | `sss.html` | Multiple Mean Free Paths | The three-layer skin model, one lobe at a time |
 | `lama.html` | Light budget | Mix and Layer conserve energy; Add does not, and you can watch it pass 100% |
+| `lama-debug.html` | Broken graph vs fixed | Three Lama graphs that look reasonable in a node editor, each drawn beside the correction |
 
 The maths is real: the Fresnel curves use the full conductor equations, the
 thin film computes actual interference at three wavelengths, and the shaderball
@@ -88,7 +90,7 @@ an Arnold one.
 
 ## Languages
 
-The three interactive pages ship English and Polish in the same file, with a
+Every guide page ships English and Polish in the same file, with a
 switch in the top-right of the nav. Both languages sit in the markup as sibling
 elements marked `lang="en"` / `lang="pl"`, and two CSS rules hide the inactive
 one — so the right language renders before any JavaScript runs, and the pages
@@ -99,7 +101,7 @@ still read correctly with JavaScript disabled. The choice is remembered in
 
 No build step — just open `index.html` in a browser.
 
-The three interactive pages load their JavaScript as ES modules, which browsers
+The guide pages load their JavaScript as ES modules, which browsers
 block over `file://`. Open those from a local server instead:
 
 ```

@@ -24,6 +24,7 @@
     <a href="guide.html">AiStandardSurface → PxrSurface</a>
     <a href="sss.html">Subsurface scattering</a>
     <a href="lama.html" class="active">PxrSurface vs Lama</a>
+    <a href="lama-debug.html">Lama troubleshooting</a>
     <a href="spec.html">Beckmann vs GGX</a>
     <a href="aniso.html">Anisotropy</a>
     <a href="fuzz.html">Fuzz</a>
@@ -809,6 +810,26 @@
           Bo go nie ma. Presence nie ma węzła w Lama — wycięcia zostają
           sprawą na poziomie geometrii. Jeśli całą pracą materiału są karty
           liści, to punkt na korzyść PxrSurface.
+        </p>
+      </div>
+
+      <div class="callout">
+        <div class="callout__title">→ <span lang="en">Going deeper</span><span lang="pl">Głębiej</span></div>
+        <p lang="en">
+          Those are the pitfalls that live in a node's parameters. The ones
+          that live in the wiring — a graph that never reaches LamaSurface, a
+          Layer with its top and base swapped, a coat that dims the glow
+          underneath it — have a page of their own:
+          <a href="lama-debug.html">when a Lama graph goes wrong</a>, arranged
+          by symptom with a diagram of each broken graph beside its correction.
+        </p>
+        <p lang="pl">
+          To są pułapki mieszkające w parametrach węzła. Te mieszkające w
+          połączeniach — graf, który nigdy nie dociera do LamaSurface, Layer z
+          zamienioną górą i bazą, powłoka przygaszająca poświatę pod sobą —
+          mają własną stronę:
+          <a href="lama-debug.html">kiedy graf Lamy idzie źle</a>, ułożoną
+          według objawu, z diagramem każdego błędnego grafu obok jego poprawki.
         </p>
       </div>
     </section>

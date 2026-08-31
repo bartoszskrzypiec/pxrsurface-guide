@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-title-pl="Kiedy graf Lamy idzie źle">When a Lama Graph Goes Wrong</title>
+<meta name="description" content="The mistakes artists actually hit when building MaterialX Lama graphs in RenderMan, arranged by symptom: black renders, coats that do nothing, layers that fight each other, and a procedure for checking a graph before blaming its values.">
+<link rel="stylesheet" href="assets/css/style.css">
+<script>
+(function () {
+  var d = document.documentElement, l = null;
+  try { l = new URLSearchParams(location.search).get('lang') || localStorage.getItem('rmg-lang'); } catch (e) {}
+  if (l !== 'en' && l !== 'pl') l = (navigator.language || '').toLowerCase().indexOf('pl') === 0 ? 'pl' : 'en';
+  d.setAttribute('data-lang', l); d.lang = l; d.classList.add('js');
+})();
+</script>
+</head>
+<body>
+
+<nav class="topnav topnav--i18n">
+  <a class="topnav__brand" href="index.html">Shader <span>Migration</span> Guides</a>
+  <div class="topnav__links">
+    <a href="index.html">Home</a>
+    <a href="guide.html">AiStandardSurface → PxrSurface</a>
+    <a href="sss.html">Subsurface scattering</a>
+    <a href="lama.html">PxrSurface vs Lama</a>
+    <a href="lama-debug.html" class="active">Lama troubleshooting</a>
+    <a href="spec.html">Beckmann vs GGX</a>
+    <a href="aniso.html">Anisotropy</a>
+    <a href="fuzz.html">Fuzz</a>
+  </div>
+  <div class="lang-switch" role="group" aria-label="Language / Język">
+    <button type="button" data-set-lang="en" class="is-active" aria-pressed="true">EN</button>
+    <button type="button" data-set-lang="pl" aria-pressed="false">PL</button>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="section-kicker"><span lang="en">Deep dive</span><span lang="pl">Analiza</span></p>
+  <h1><span lang="en">When a Lama graph goes wrong</span><span lang="pl">Kiedy graf Lamy idzie źle</span></h1>
+  <p class="lead" lang="en">
+    A Lama material is a graph, and a graph fails differently from a shader
+    with a fixed stack. There is no parameter left at a bad default and no
+    checkbox someone forgot — there is a wire going to the wrong place, and
+    everything downstream of it looks plausible. This page is arranged by
+    what you're seeing, not by which node is at fault.
+  </p>
+  <p class="lead" lang="pl">
+    Materiał Lama to graf, a graf psuje się inaczej niż shader ze stałym
+    stosem. Nie ma tu parametru zostawionego na złym domyślnym ustawieniu ani
+    checkboxa, o którym ktoś zapomniał — jest przewód idący w złe miejsce, a
+    wszystko poniżej niego wygląda wiarygodnie. Ta strona jest ułożona według
+    tego, co widzisz, a nie według tego, który węzeł zawinił.
+  </p>
+</header>
+
+<div class="guide-layout">
+  <aside class="toc">
+    <h2><span lang="en">On this page</span><span lang="pl">Na tej stronie</span></h2>
+    <ol>
+      <li><a href="#nothing-renders"><span lang="en">When nothing renders</span><span lang="pl">Kiedy nic się nie renderuje</span></a></li>
+      <li><a href="#wired-wrong"><span lang="en">The right nodes, the wrong way round</span><span lang="pl">Właściwe węzły, źle połączone</span></a></li>
+      <li><a href="#layers-fighting"><span lang="en">Layers that fight each other</span><span lang="pl">Warstwy, które walczą ze sobą</span></a></li>
+      <li><a href="#looks-wrong"><span lang="en">It renders, it's just wrong</span><span lang="pl">Renderuje się, tylko źle</span></a></li>
+      <li><a href="#checking"><span lang="en">Checking a graph</span><span lang="pl">Sprawdzanie grafu</span></a></li>
+    </ol>
+  </aside>
+
+  <main class="guide-content">
+
+    <section id="nothing-renders">
+      <h2><span lang="en">When nothing renders</span><span lang="pl">Kiedy nic się nie renderuje</span></h2>
+
+      <p lang="en">
+        The good news about a black render is that it's almost always a
+        connection rather than a value. Nothing in a Lama graph is off by
+        default, so if the whole material has disappeared, the light isn't
+        being turned down somewhere — it's being dropped.
+      </p>
+      <p lang="pl">
+        Dobra wiadomość o czarnym renderze jest taka, że to niemal zawsze
+        połączenie, a nie wartość. Nic w grafie Lamy nie jest domyślnie
+        wyłączone, więc jeśli cały materiał zniknął, światło nie jest gdzieś
+        przykręcane — ono jest gubione.
+      </p>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"My material renders black"</span><span lang="pl">„Mój materiał renderuje się na czarno"</span></div>
+        <p lang="en">
+          The graph never reaches <strong>LamaSurface</strong>. Every Lama
+          material node describes a response to light, but only LamaSurface
+          hands that response to the renderer — it's the plug, and a graph
+          without it is a set of parts nothing ever asks for. Follow the chain
+          from your last operator and make sure it ends there.
+        </p>
+        <p lang="pl">
+          Graf nigdy nie dociera do <strong>LamaSurface</strong>. Każdy węzeł
+          materiału Lama opisuje odpowiedź na światło, ale tylko LamaSurface
+          przekazuje tę odpowiedź rendererowi — to wtyczka, a graf bez niej to
+          zestaw części, o które nikt nigdy nie pyta. Prześledź łańcuch od
+          ostatniego operatora i upewnij się, że kończy się właśnie tam.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"I deleted one node and the whole material went black"</span><span lang="pl">„Usunąłem jeden węzeł i cały materiał zgasł"</span></div>
+        <p lang="en">
+          A Lama graph is a chain, not a row of switches. Deleting a material
+          node at the end of a branch removes one lobe; deleting an operator in
+          the middle cuts everything below it off from LamaSurface at once.
+          When you want a lobe gone, delete the leaf and rewire whatever fed
+          that junction straight through.
+        </p>
+        <p lang="pl">
+          Graf Lamy to łańcuch, nie rząd przełączników. Usunięcie węzła
+          materiału na końcu gałęzi zabiera jeden płat; usunięcie operatora w
+          środku odcina naraz wszystko poniżej niego od LamaSurface. Gdy chcesz
+          pozbyć się płata, usuń liść i przepnij to, co zasilało ten węzeł,
+          prosto dalej.
+        </p>
+      </div>
+    </section>
+
+    <section id="wired-wrong">
+      <h2><span lang="en">The right nodes, the wrong way round</span><span lang="pl">Właściwe węzły, źle połączone</span></h2>
+
+      <p lang="en">
+        These are the expensive ones, because nothing errors. Every node in the
+        graph is a legitimate material, every wire lands on a real input, and
+        the render comes back looking like a material — just not yours. The
+        node editor cannot tell you that a piece of wood has been laminated
+        onto the underside of a sheet of varnish.
+      </p>
+      <p lang="pl">
+        To te kosztowne, bo nic nie zgłasza błędu. Każdy węzeł w grafie jest
+        prawidłowym materiałem, każdy przewód trafia w prawdziwe wejście, a
+        render wraca, wyglądając jak materiał — tylko nie twój. Edytor węzłów
+        nie powie ci, że kawałek drewna został zalaminowany na spodzie arkusza
+        werniksu.
+      </p>
+
+      <div class="viz" id="viz-graph">
+        <div class="viz__head">
+          <p class="viz__title"><span lang="en">What you built, and what you meant</span><span lang="pl">Co zbudowałeś, a co miałeś na myśli</span></p>
+          <p class="viz__sub" lang="en">
+            Three graphs that look reasonable in a node editor. The broken
+            wiring is on the left, the correction on the right.
+          </p>
+          <p class="viz__sub" lang="pl">
+            Trzy grafy, które w edytorze węzłów wyglądają rozsądnie. Błędne
+            połączenia po lewej, poprawka po prawej.
+          </p>
+        </div>
+        <div class="viz__stage">
+          <canvas id="graph-canvas" data-h="330"></canvas>
+        </div>
+        <div class="viz__controls" id="graph-ctl">
+          <div class="ctl ctl--seg">
+            <div class="ctl__label"><span lang="en">The mistake</span><span lang="pl">Błąd</span></div>
+            <div class="seg" id="graphCase" data-value="terminal">
+              <button type="button" data-val="terminal" class="is-active"><span lang="en">No terminal</span><span lang="pl">Brak terminala</span></button>
+              <button type="button" data-val="order"><span lang="en">Swapped</span><span lang="pl">Zamienione</span></button>
+              <button type="button" data-val="added"><span lang="en">Added</span><span lang="pl">Dodane</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="readout" id="graph-readout"></div>
+        <div class="viz__note">
+          <p lang="en">
+            All three graphs contain the correct nodes. That's the point — a
+            Lama material can be built out of exactly the right parts and still
+            be wrong, because the parts carry no memory of which way round you
+            meant them.
+          </p>
+          <p lang="pl">
+            Wszystkie trzy grafy zawierają właściwe węzły. I o to chodzi —
+            materiał Lama można zbudować z dokładnie właściwych części i wciąż
+            mieć go źle, bo części nie pamiętają, w którą stronę je
+            zaplanowałeś.
+          </p>
+        </div>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"My varnish ended up under the wood"</span><span lang="pl">„Mój werniks wylądował pod drewnem"</span></div>
+        <p lang="en">
+          <strong>LamaLayer</strong>'s two inputs got swapped — the substrate
+          went in as the top material and the coat as the base. Nothing
+          complains, because both are perfectly valid materials in either slot.
+          The top input is the thing you'd touch if you ran a finger across the
+          surface; wire it that way round.
+        </p>
+        <p lang="pl">
+          Dwa wejścia <strong>LamaLayer</strong> zostały zamienione — podłoże
+          trafiło jako materiał górny, a powłoka jako baza. Nic nie protestuje,
+          bo oba są całkowicie poprawnymi materiałami w każdym z tych slotów.
+          Górne wejście to ta rzecz, której dotknąłbyś, przesuwając palcem po
+          powierzchni; tak to podłącz.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The coat is there but the base vanished"</span><span lang="pl">„Powłoka jest, ale baza zniknęła"</span></div>
+        <p lang="en">
+          A branch that isn't wired into anything still sits in the graph
+          looking finished. If the base went into an operator you later
+          abandoned, or into an input you've since re-plugged with something
+          else, it never reaches LamaSurface and the coat renders alone over
+          nothing. Trace backwards from the surface, not forwards from the
+          nodes — that way you only ever walk wires that actually arrive.
+        </p>
+        <p lang="pl">
+          Gałąź, która nie jest do niczego podłączona, wciąż siedzi w grafie i
+          wygląda na skończoną. Jeśli baza poszła do operatora, który potem
+          porzuciłeś, albo do wejścia, w które od tamtej pory wpiąłeś coś
+          innego, nigdy nie dociera do LamaSurface, a powłoka renderuje się sama
+          nad niczym. Śledź wstecz od powierzchni, nie w przód od węzłów — wtedy
+          chodzisz wyłącznie po przewodach, które naprawdę dochodzą.
+        </p>
+      </div>
+    </section>
+
+    <section id="layers-fighting">
+      <h2><span lang="en">Layers that fight each other</span><span lang="pl">Warstwy, które walczą ze sobą</span></h2>
+
+      <p lang="en">
+        The graph is wired correctly and every node is the one you wanted. What
+        goes wrong now is arithmetic between layers: two of them doing the same
+        job, or one quietly taking light the other needed.
+      </p>
+      <p lang="pl">
+        Graf jest podłączony poprawnie i każdy węzeł jest tym, którego chciałeś.
+        To, co teraz idzie źle, to arytmetyka między warstwami: dwie robiące tę
+        samą robotę albo jedna po cichu zabierająca światło, którego druga
+        potrzebowała.
+      </p>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The highlight is doubled"</span><span lang="pl">„Rozbłysk jest podwojony"</span></div>
+        <p lang="en">
+          The base kept a reflection of its own after a
+          <strong>LamaDielectric</strong> coat went on top of it. In a fixed
+          stack a specular slot is always present and always yours to fill, so
+          it's easy to arrive in Lama still filling it — but a coat
+          <em>is</em> a reflection, and the thing underneath usually wants to be
+          the matte or metallic part only. Take the reflection out of the base
+          and let the coat do that job.
+        </p>
+        <p lang="pl">
+          Baza zachowała własne odbicie po tym, jak nałożyłeś na nią powłokę
+          <strong>LamaDielectric</strong>. W stałym stosie slot na specular jest
+          zawsze obecny i zawsze do twojego wypełnienia, więc łatwo trafić do
+          Lamy, wciąż go wypełniając — ale powłoka <em>jest</em> odbiciem, a to,
+          co pod nią, zwykle ma być wyłącznie częścią matową albo metaliczną.
+          Wyjmij odbicie z bazy i pozwól, żeby zrobiła to powłoka.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"My glow got dimmer when I added a coat"</span><span lang="pl">„Moja poświata przygasła, gdy dodałem powłokę"</span></div>
+        <p lang="en">
+          That's the coat doing its job. <strong>LamaLayer</strong> gives the
+          base only the light the top didn't take, and it treats an emissive
+          base the same way — a lacquer over a glowing panel really does dim it.
+          If the glow is meant to sit on top of the material rather than under
+          it, this is the one place <strong>LamaAdd</strong> is the honest
+          answer rather than the dangerous one.
+        </p>
+        <p lang="pl">
+          To powłoka robi swoje. <strong>LamaLayer</strong> daje bazie tylko to
+          światło, którego nie wzięła góra, i tak samo traktuje bazę emisyjną —
+          lakier na świecącym panelu naprawdę go przygasza. Jeśli poświata ma
+          siedzieć na materiale, a nie pod nim, to jedyne miejsce, gdzie
+          <strong>LamaAdd</strong> jest uczciwą odpowiedzią, a nie niebezpieczną.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"Two coats and now the base barely shows"</span><span lang="pl">„Dwie powłoki i baza ledwo widać"</span></div>
+        <p lang="en">
+          Each layer takes its share before anything below it sees the light, so
+          coats compound: the second one doesn't halve what reaches the base, it
+          takes its cut of whatever the first one already left. Two glossy
+          layers over a diffuse base can leave the base contributing almost
+          nothing, which reads as a material that has gone strangely dark. Ask
+          whether that second coat is a real physical layer or a highlight you
+          could have got from the first.
+        </p>
+        <p lang="pl">
+          Każda warstwa bierze swój udział, zanim cokolwiek pod nią zobaczy
+          światło, więc powłoki się nakładają: druga nie połowi tego, co dociera
+          do bazy — bierze swoją część z tego, co pierwsza już zostawiła. Dwie
+          błyszczące warstwy nad matową bazą potrafią sprawić, że baza nie wnosi
+          prawie nic, co czyta się jako materiał, który dziwnie pociemniał.
+          Zapytaj, czy ta druga powłoka to prawdziwa fizyczna warstwa, czy
+          rozbłysk, który dało się wyciągnąć z pierwszej.
+        </p>
+      </div>
+    </section>
+
+    <section id="looks-wrong">
+      <h2><span lang="en">It renders, it's just wrong</span><span lang="pl">Renderuje się, tylko źle</span></h2>
+
+      <p lang="en">
+        The last group are the ones that survive a look-through. The material
+        renders, it holds together, and something about it is off in a way
+        that's hard to point at — usually because a decision you made once is
+        only being applied to part of the graph.
+      </p>
+      <p lang="pl">
+        Ostatnia grupa to te, które przechodzą pobieżne obejrzenie. Materiał się
+        renderuje, trzyma się kupy, a coś w nim jest nie tak w sposób trudny do
+        wskazania — zwykle dlatego, że decyzja, którą podjąłeś raz, stosuje się
+        tylko do części grafu.
+      </p>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"Only the top layer got my bump"</span><span lang="pl">„Tylko górna warstwa dostała mój bump"</span></div>
+        <p lang="en">
+          Bump in a Lama graph is per node — <strong>LamaDiffuse</strong>,
+          <strong>LamaConductor</strong> and the rest each carry their own bump
+          input. Wire a map into one of them and the others keep shading against
+          the smooth geometric surface, which reads as detail that only half
+          exists. Feed the same map to every node in the stack, unless you mean
+          the difference: a smooth coat over a bumpy base is exactly what
+          varnish does.
+        </p>
+        <p lang="pl">
+          Bump w grafie Lamy jest per węzeł — <strong>LamaDiffuse</strong>,
+          <strong>LamaConductor</strong> i reszta mają własne wejście bump.
+          Podłącz mapę do jednego z nich, a pozostałe dalej cieniują się
+          względem gładkiej geometrii, co czyta się jako detal istniejący tylko
+          w połowie. Podaj tę samą mapę każdemu węzłowi w stosie — chyba że
+          chodzi ci właśnie o różnicę: gładka powłoka na nierównej bazie to
+          dokładnie to, co robi werniks.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"The subsurface looks nothing like it did before"</span><span lang="pl">„Subsurface wygląda zupełnie inaczej niż wcześniej"</span></div>
+        <p lang="en">
+          <strong>LamaSSS</strong> measures in real-world distances, which means
+          the scale your scene is modelled at is part of the result — the same
+          trap Mean Free Path sets, in a different node. Carrying numbers across
+          from another material carries the numbers but not the assumptions
+          around them. The <a href="sss.html">subsurface deep dive</a> covers
+          what those distances actually mean.
+        </p>
+        <p lang="pl">
+          <strong>LamaSSS</strong> mierzy w rzeczywistych odległościach, co
+          oznacza, że skala, w jakiej modelowana jest twoja scena, jest częścią
+          wyniku — ta sama pułapka, którą zastawia Mean Free Path, tylko w innym
+          węźle. Przeniesienie liczb z innego materiału przenosi liczby, ale nie
+          założenia wokół nich. <a href="sss.html">Dogłębna analiza
+          subsurface</a> tłumaczy, co te odległości naprawdę znaczą.
+        </p>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <div class="callout__title">⚠ <span lang="en">"Renders got much slower once I layered it"</span><span lang="pl">„Rendery mocno zwolniły, gdy to uwarstwiłem"</span></div>
+        <p lang="en">
+          Every material node in the stack is another lobe the renderer has to
+          sample at each hit, so layers multiply the work rather than dividing
+          it. A three-node graph is cheap; a graph you kept adding coats to in
+          order to solve look problems is not. If a layer exists because a value
+          was hard to dial in rather than because the material physically has
+          it, it's worth deleting.
+        </p>
+        <p lang="pl">
+          Każdy węzeł materiału w stosie to kolejny płat, który renderer musi
+          próbkować przy każdym trafieniu, więc warstwy mnożą pracę, zamiast ją
+          dzielić. Graf z trzech węzłów jest tani; graf, do którego dokładałeś
+          powłoki, żeby rozwiązać problemy z wyglądem, już nie. Jeśli warstwa
+          istnieje dlatego, że trudno było dobrać wartość, a nie dlatego, że
+          materiał fizycznie ją ma, warto ją usunąć.
+        </p>
+      </div>
+    </section>
+
+    <section id="checking">
+      <h2><span lang="en">Checking a graph before you blame it</span><span lang="pl">Sprawdzanie grafu, zanim go obwinisz</span></h2>
+
+      <p lang="en">
+        In a fixed stack you debug by scanning parameters. In a graph you debug
+        by walking wires, and the order matters — every step below is cheap and
+        rules out an entire class of problem before you touch a value.
+      </p>
+      <p lang="pl">
+        W stałym stosie debugujesz, przeglądając parametry. W grafie debugujesz,
+        chodząc po przewodach, a kolejność ma znaczenie — każdy krok poniżej
+        jest tani i wyklucza całą klasę problemów, zanim dotkniesz jakiejkolwiek
+        wartości.
+      </p>
+
+      <ol class="steps" lang="en">
+        <li>
+          <strong>Follow the chain to LamaSurface before you touch a value.</strong>
+          Most black renders and missing layers are a wiring problem, and no
+          amount of parameter tweaking fixes a branch that never arrives.
+        </li>
+        <li>
+          <strong>Plug one material node straight into LamaSurface at a time.</strong>
+          A lobe you can see on its own is a lobe you can judge. This is the
+          fastest way to find out which node is actually wrong, and it costs you
+          one connection.
+        </li>
+        <li>
+          <strong>At every junction, say the operator out loud.</strong> Mix puts
+          materials in different places, Layer puts one over another, Add sums
+          them at full strength. If the sentence you just said isn't the
+          material you wanted, that's your bug.
+        </li>
+        <li>
+          <strong>On every Layer, confirm which input is top and which is base.</strong>
+          Swapped inputs never error and rarely look obviously wrong — they look
+          slightly off, which is the hardest kind of wrong to chase.
+        </li>
+        <li>
+          <strong>Only now start changing numbers.</strong> If the graph is right
+          and it still isn't the material, that's a look problem — and look
+          problems are worth solving with values rather than with more nodes.
+        </li>
+      </ol>
+      <ol class="steps" lang="pl">
+        <li>
+          <strong>Prześledź łańcuch do LamaSurface, zanim dotkniesz jakiejkolwiek wartości.</strong>
+          Większość czarnych renderów i brakujących warstw to problem
+          połączenia, a żadna ilość kręcenia parametrami nie naprawi gałęzi,
+          która nigdy nie dochodzi.
+        </li>
+        <li>
+          <strong>Podłączaj po jednym węźle materiału prosto do LamaSurface.</strong>
+          Płat, który widzisz osobno, to płat, który możesz ocenić. To najszybszy
+          sposób, by dowiedzieć się, który węzeł naprawdę jest zły, a kosztuje
+          cię jedno połączenie.
+        </li>
+        <li>
+          <strong>Przy każdym węźle wypowiedz operator na głos.</strong> Mix
+          kładzie materiały w różnych miejscach, Layer kładzie jeden na drugim,
+          Add sumuje je z pełną siłą. Jeśli zdanie, które właśnie wypowiedziałeś,
+          nie jest materiałem, którego chciałeś, to jest twój błąd.
+        </li>
+        <li>
+          <strong>Przy każdym Layerze potwierdź, które wejście jest górne, a które to baza.</strong>
+          Zamienione wejścia nigdy nie zgłaszają błędu i rzadko wyglądają
+          wyraźnie źle — wyglądają lekko nie tak, a to najtrudniejszy rodzaj
+          błędu do ścigania.
+        </li>
+        <li>
+          <strong>Dopiero teraz zacznij zmieniać liczby.</strong> Jeśli graf jest
+          poprawny, a to wciąż nie ten materiał, to problem z wyglądem — a
+          problemy z wyglądem warto rozwiązywać wartościami, nie kolejnymi
+          węzłami.
+        </li>
+      </ol>
+
+      <div class="callout">
+        <div class="callout__title">→ <span lang="en">Going deeper</span><span lang="pl">Głębiej</span></div>
+        <p lang="en">
+          This page is about graphs. The pitfalls that live in a node's
+          <em>parameters</em> — Add against Layer as an energy question, which
+          way a LamaMix mask runs, why a tinted coat needs Top Thickness, and
+          what happens to a metal built from the wrong node — are in the
+          <a href="lama.html#pitfalls">comparison guide</a>, alongside a
+          light-budget widget at
+          <a href="lama.html#combining">Mix vs Add vs Layer</a> that shows the
+          energy arithmetic directly.
+        </p>
+        <p lang="pl">
+          Ta strona jest o grafach. Pułapki mieszkające w
+          <em>parametrach</em> węzła — Add kontra Layer jako pytanie o energię,
+          w którą stronę biegnie maska LamaMix, dlaczego zabarwiona powłoka
+          potrzebuje Top Thickness i co się dzieje z metalem zbudowanym ze złego
+          węzła — są w <a href="lama.html#pitfalls">przewodniku
+          porównawczym</a>, obok widgetu budżetu światła w sekcji
+          <a href="lama.html#combining">Mix kontra Add kontra Layer</a>, który
+          pokazuje arytmetykę energii wprost.
+        </p>
+      </div>
+    </section>
+
+    <div class="card card--trailing">
+      <span class="badge"><span lang="en">Related guide</span><span lang="pl">Powiązany przewodnik</span></span>
+      <h3>PxrSurface vs Lama</h3>
+      <p class="muted" lang="en">
+        What Lama is, how its nodes map onto the PxrSurface stack, and how to
+        tell which of the two a job actually needs.
+      </p>
+      <p class="muted" lang="pl">
+        Czym jest Lama, jak jej węzły mapują się na stos PxrSurface i jak
+        rozpoznać, którego z tych dwóch naprawdę wymaga dane zadanie.
+      </p>
+      <p><a href="lama.html"><span lang="en">Read the guide →</span><span lang="pl">Przeczytaj przewodnik →</span></a></p>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <p lang="en">
+    Written for lookdev and lighting artists switching render engines. No prior
+    shader-writing knowledge assumed.
+  </p>
+  <p lang="pl">
+    Napisane dla artystów lookdev i światła zmieniających silnik renderujący.
+    Nie zakłada wcześniejszej znajomości pisania shaderów.
+  </p>
+  <p lang="en">
+    Node names and inputs follow the MaterialX Lama definitions as shipped with
+    RenderMan. Node sets and defaults do move between versions — always sanity
+    check against the version installed in your pipeline.
+  </p>
+  <p lang="pl">
+    Nazwy węzłów i wejść idą za definicjami MaterialX Lama dostarczanymi z
+    RenderManem. Zestawy węzłów i wartości domyślne zmieniają się między
+    wersjami — zawsze sprawdzaj względem wersji zainstalowanej w twoim
+    pipelinie.
+  </p>
+  <p class="muted"><span lang="en">Last updated: 31 August 2026.</span><span lang="pl">Ostatnia aktualizacja: 31 sierpnia 2026.</span></p>
+</footer>
+
+<script type="module" src="assets/js/lama-debug.js"></script>
+</body>
+</html>

@@ -20,11 +20,12 @@ a shared toolkit used across all four book projects:
   baked into the original. **Consider adopting the hardened version here
   too**, for consistency and to stop carrying the one-off `'rmg-lang'`
   string: it needs `<html data-i18n-storage="rmg-lang" data-i18n-default="en">`
-  added to every bilingual page (`spec.html`, `aniso.html`, `fuzz.html`),
+  added to every bilingual page (which is now every page in the repo,
+  including `lama-debug.html`),
   and each page's `<title>` needs an explicit `data-title-en="..."` added
   (currently relies on the auto-derivation this repo's copy still has).
   Not done automatically as part of this handoff — it's a small, mechanical
-  edit across three pages, worth doing deliberately rather than as a
+  edit across every page, worth doing deliberately rather than as a
   drive-by change.
 - `assets/js/interactive.js` (formula modals + symbol tooltips, canonical
   source is `raytracing_book`) is **not currently used anywhere in this
