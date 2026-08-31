@@ -536,6 +536,12 @@ footer {
   gap: 0.75rem;
 }
 
+/* Two stacked stage rows in the same card (e.g. a schematic above a
+   curve+render split) get a visible seam between them. */
+.viz__stage + .viz__stage {
+  border-top: 1px solid var(--border);
+}
+
 @media (max-width: 620px) {
   .viz__stage--split { grid-template-columns: 1fr; }
 }

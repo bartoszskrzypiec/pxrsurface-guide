@@ -3,7 +3,7 @@
 import {
   createShaderball, createPlot, bindControls, MODEL,
   fresnelConductor, fresnelArtistic, thinFilmRGB, rgbCss,
-  axes, gridLines, label,
+  axes, gridLines, label, currentLang,
 } from './viz.js';
 
 const DEG = Math.PI / 180;
@@ -105,6 +105,65 @@ const fresnelPlot = createPlot(document.getElementById('fresnel-plot'), (ctx, w,
   label(ctx, 'grazing', box.x + box.w, h - 4, th, { align: 'right', size: 10 });
 });
 
+/* A flattened view of the sphere itself: Face color at the center (facing
+   you head-on), Edge color at the rim (grazing away from you), shaded with
+   the same curve as the plot above. cosT = sqrt(1 - u^2) is a sphere's
+   screen-space normal.z falloff for a point at normalized radius u under an
+   orthographic view — cheap concentric rings rather than a gradient API, so
+   it stays crisp and theme-proof like fibre-diagram in fuzz.js. */
+const fresnelRim = createPlot(document.getElementById('fresnel-rim'), (ctx, w, h, th) => {
+  const padTop = 8;
+  const padBottom = 22;
+  const R = Math.min(w * 0.22, (h - padTop - padBottom) / 2);
+  const cx = w / 2;
+  const cy = padTop + R;
+
+  const rings = 64;
+  for (let i = rings; i >= 1; i--) {
+    const u = i / rings;
+    const cosT = Math.sqrt(Math.max(0, 1 - u * u));
+    const v = fresnelArtistic(fr.frFace, fr.frEdge, fr.frExp, cosT);
+    ctx.fillStyle = rgbCss([v, v, v]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * u, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = th.border;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Where the blend crosses halfway between Face and Edge:
+  // pow(1 - cosT, exp) = 0.5, solved for cosT.
+  const cosHalf = 1 - 0.5 ** (1 / fr.frExp);
+  const uHalf = Math.sqrt(Math.max(0, 1 - cosHalf * cosHalf));
+  ctx.strokeStyle = th.text;
+  ctx.setLineDash([3, 4]);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * uHalf, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // A short leader from that ring out past the disc's edge, so the number is
+  // always readable against the plain background, not the shaded fill.
+  const leaderX = cx + R + 18;
+  ctx.beginPath();
+  ctx.moveTo(cx + R * uHalf, cy);
+  ctx.lineTo(leaderX, cy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const angleHalf = Math.acos(cosHalf) / DEG;
+  label(ctx, `~${angleHalf.toFixed(0)}°`, leaderX + 4, cy + 4, th, { size: 12 });
+
+  const lang = currentLang();
+  label(ctx, lang === 'pl'
+    ? 'Face na środku, Edge na obwodzie — przerywany okrąg: połowa drogi między nimi'
+    : 'Face at center, Edge at the rim — dashed ring: halfway between them',
+    w / 2, h - 6, th, { align: 'center', size: 11 });
+});
+
 const fresnelBall = createShaderball(document.getElementById('fresnel-ball'), {
   model: [MODEL.GGX, MODEL.GGX],
   roughness: [0.15, 0.15],
@@ -129,6 +188,7 @@ const fresnelReadout = document.getElementById('fresnel-readout');
 function updateFresnel(s) {
   fr = s;
   fresnelPlot.redraw();
+  fresnelRim.redraw();
   fresnelBall.set({
     fresnelMode: s.frShow === 'physical' ? 2 : 1,
     ior: [s.frIor, s.frIor, s.frIor],

@@ -671,13 +671,24 @@
         <div class="viz__head">
           <p class="viz__title"><span lang="en">Both modes, one curve</span><span lang="pl">Oba tryby, jedna krzywa</span></p>
           <p class="viz__sub" lang="en">
-            Horizontal: viewing angle, from head-on at the left to grazing at
-            the right. Vertical: how much light the surface reflects.
+            Top: the same curve painted onto a flattened sphere — Face color
+            at the center, where the surface faces you head-on, Edge color at
+            the rim, where it's grazing away from you, with the halfway point
+            marked. Below: the curve itself. Horizontal: viewing angle, from
+            head-on at the left to grazing at the right. Vertical: how much
+            light the surface reflects.
           </p>
           <p class="viz__sub" lang="pl">
-            Poziomo: kąt patrzenia, od wprost po lewej do ślizgowego po
-            prawej. Pionowo: ile światła odbija powierzchnia.
+            Na górze: ta sama krzywa naniesiona na spłaszczoną kulę — kolor
+            Face na środku, gdzie powierzchnia patrzy wprost na ciebie, kolor
+            Edge na obwodzie, gdzie ślizga się od ciebie, z zaznaczonym
+            punktem połowy. Poniżej: sama krzywa. Poziomo: kąt patrzenia, od
+            wprost po lewej do ślizgowego po prawej. Pionowo: ile światła
+            odbija powierzchnia.
           </p>
+        </div>
+        <div class="viz__stage">
+          <canvas id="fresnel-rim" data-ratio="0.45"></canvas>
         </div>
         <div class="viz__stage viz__stage--split">
           <canvas id="fresnel-plot" data-ratio="0.72"></canvas>
